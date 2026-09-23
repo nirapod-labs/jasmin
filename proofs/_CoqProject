@@ -242,6 +242,7 @@ lang/waes.v
 lang/warray_.v
 lang/word.v
 lang/wsize.v
+toEC/safety.v
 toEC/toec_for.v
 toEC/toec_for_proof.v
 toEC/toec_prog.v
