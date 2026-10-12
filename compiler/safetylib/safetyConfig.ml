@@ -133,6 +133,18 @@ let default =
             Can only add alarms. A negative value tracks every array.";
   } ::
 
+  { p    = Int 2;
+    name = "congruence_reduction";
+    desc = `String "When the facts of the congruence domain are passed on to \
+            the numerical domains. 2: after every operation. 1: after an \
+            operation that writes some variables (assignment, forgetting, \
+            repacking), the facts on these variables only; after the other \
+            operations, all of them. 0: never; the congruence domain is still \
+            used in the checks. Passing a fact on only refines the numerical \
+            state, so a lower value can only add alarms. Each pass costs one \
+            constraint per congruence fact.";
+  } ::
+
   { p    = Int 1;
     name = "k_unroll";
     desc = `String "Number of unrolling of a loop body before applying the \
@@ -313,6 +325,7 @@ let sc_input_ranges            = find_ranges     "input_range"
 let sc_comp_pass               = find_comppass   "compilation_pass"
 let sc_k_unroll                = find_int        "k_unroll"
 let sc_array_track_max_bytes   = find_int        "array_track_max_bytes"
+let sc_congruence_reduction    = find_int        "congruence_reduction"
 let sc_call_policy             = find_callpolicy "call_policy"
 let sc_widening_out            = find_bool       "widening_out"
 let sc_zero_threshold          = find_bool       "zero_threshold"

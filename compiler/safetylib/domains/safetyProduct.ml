@@ -817,6 +817,10 @@ module type RProdParam = sig
   module B : AbsDisjType
   val print : ?full:bool -> Format.formatter -> (A.t * B.t) -> unit
   val reduce : (A.t * B.t) -> (A.t * B.t)
+
+  (* [reduce_vars vs t] is [reduce t] restricted to what [B] knows about the
+     variables [vs]. *)
+  val reduce_vars : mvar list -> (A.t * B.t) -> (A.t * B.t)
 end
 
 (* Asymmetric reduced product.   
@@ -827,9 +831,20 @@ module ReducedProd (P : RProdParam) : AbsDisjType = struct
 
   type t = A.t * B.t
   
-  let reduce = P.reduce
-  
+  (* How much of [B] is passed on to [A]: see the option
+     [congruence_reduction] of SafetyConfig. Skipping a reduction is sound,
+     as it only refines [A]. *)
+  let reduce t =
+    if Config.sc_congruence_reduction () >= 1 then P.reduce t else t
+
+  let reduce_vars vs t =
+    match Config.sc_congruence_reduction () with
+    | 0 -> t
+    | 1 -> P.reduce_vars vs t
+    | _ -> P.reduce t
+
   let app  fa fb (a,b)           = reduce (fa a, fb b)
+  let app_vars vs fa fb (a,b)    = reduce_vars vs (fa a, fb b)
   let app2 fa fb (a1,b1) (a2,b2) = reduce (fa a1 a2, fb b1 b2)
   let appl fa fb l =
     let la, lb = List.split l in
@@ -846,7 +861,7 @@ module ReducedProd (P : RProdParam) : AbsDisjType = struct
   let widening c = app2 (A.widening c) (B.widening c)
   
   let forget_list t l =
-    app (fun x -> A.forget_list x l) (fun x -> B.forget_list x l) t
+    app_vars l (fun x -> A.forget_list x l) (fun x -> B.forget_list x l) t
 
   let is_bottom (a,b) = (A.is_bottom a) || (B.is_bottom b)
 
@@ -871,8 +886,9 @@ module ReducedProd (P : RProdParam) : AbsDisjType = struct
     interval_meet i1 i2
   
   let assign_expr ?force:(force=false) t ves =
-    app (fun x -> A.assign_expr ~force:force x ves)
-        (fun x -> B.assign_expr ~force:force x ves) t
+    app_vars (List.map fst ves)
+      (fun x -> A.assign_expr ~force:force x ves)
+      (fun x -> B.assign_expr ~force:force x ves) t
       
   let meet_constr t c =
     app (fun x -> A.meet_constr x c)
@@ -908,16 +924,16 @@ module ReducedProd (P : RProdParam) : AbsDisjType = struct
   let print = P.print
 
   let set_rel t v =
-    app (fun x -> A.set_rel x v)
-        (fun x -> B.set_rel x v) t
+    app_vars [v] (fun x -> A.set_rel x v)
+                 (fun x -> B.set_rel x v) t
   
   let set_unrel t v =
-    app (fun x -> A.set_unrel x v)
-        (fun x -> B.set_unrel x v) t
+    app_vars [v] (fun x -> A.set_unrel x v)
+                 (fun x -> B.set_unrel x v) t
 
   let dom_st_update t v minfo =
-    app (fun x -> A.dom_st_update x v minfo)
-        (fun x -> B.dom_st_update x v minfo) t
+    app_vars v (fun x -> A.dom_st_update x v minfo)
+               (fun x -> B.dom_st_update x v minfo) t
 
   let top_no_disj = app A.top_no_disj B.top_no_disj
 

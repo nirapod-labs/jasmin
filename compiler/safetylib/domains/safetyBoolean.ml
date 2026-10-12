@@ -269,6 +269,22 @@ module AbsNumTMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type exten
       let reduce (a,b) =
         let m = B.get_constr b in
         (List.fold_left A.meet_constr a m, b)
+
+      (* A fact of [B] is on one variable, compared here by its blasted
+         cells, the unit in which the numerical domains know variables. *)
+      let reduce_vars vs (a,b) =
+        let names = Hashtbl.create 16 in
+        let add v = Hashtbl.replace names (string_of_mvar v) () in
+        List.iter add vs;
+        List.iter add (u8_blast_vars ~blast_arrays:true vs);
+        let concerns c =
+          List.exists (fun v ->
+              Hashtbl.mem names (string_of_mvar v)
+              || List.exists (fun w -> Hashtbl.mem names (string_of_mvar w))
+                (u8_blast_vars ~blast_arrays:true [v]))
+            (Mtexpr.get_var (Mtcons.get_expr c)) in
+        let m = List.filter concerns (B.get_constr b) in
+        (List.fold_left A.meet_constr a m, b)
     end)
 
   module R = MakeAbsDisjProf (struct
