@@ -1,0 +1,12 @@
+// x is a multiple of 8 in [0; 56]; the branch on x == 4 is never taken,
+// which the congruence domain knows and the interval domain does not.
+export fn aligned(reg u64 i) -> reg u64 {
+  stack u64[1] a;
+  reg u64 x r;
+  a[0] = 0;
+  i &= 7;
+  x = i << 3;
+  r = 0;
+  if (x == 4) { r = a[x]; }
+  return r;
+}
