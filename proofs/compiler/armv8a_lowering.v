@@ -190,6 +190,7 @@ Definition uload_mn (ws ws' : wsize) : option armv8a_mnemonic :=
   match ws' with
   | U8 => Some LDRB
   | U16 => Some LDRH
+  | U32 => if ws == U64 then Some LDRW else None
   | _ => None
   end.
 

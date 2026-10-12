@@ -159,6 +159,7 @@ Variant armv8a_mnemonic : Type :=
 | LDRSB                          (* Load a sign extended byte *)
 | LDRSH                          (* Load a sign extended halfword *)
 | LDRSW                          (* Load a sign extended word *)
+| LDRW                           (* Load a zero extended word *)
 | LDP                            (* Load a pair of words or doublewords *)
 
 (* Stores *)
@@ -246,7 +247,7 @@ Definition armv8a_mnemonics : seq armv8a_mnemonic :=
     ; SXTB; SXTH; SXTW; UXTB; UXTH; UXTW
     ; CMP; CMN; TST
     ; CSEL; CSINC; CSINV; CSNEG; CSET; CSETM
-    ; LDR; LDRB; LDRH; LDRSB; LDRSH; LDRSW; LDP
+    ; LDR; LDRB; LDRH; LDRSB; LDRSH; LDRSW; LDRW; LDP
     ; STR; STRB; STRH; STP
     ; CSDB; DSB; ISB
     ; VMOV; VMOVI; VLDR; VSTR
@@ -329,7 +330,7 @@ Definition wsize_of_narrow_load_mn (mn : armv8a_mnemonic) : option wsize :=
   match mn with
   | LDRB | LDRSB => Some U8
   | LDRH | LDRSH => Some U16
-  | LDRSW => Some U32
+  | LDRSW | LDRW => Some U32
   | _ => None
   end.
 
@@ -417,6 +418,7 @@ Definition string_of_armv8a_mnemonic (mn : armv8a_mnemonic) : string :=
   | LDRSB => "LDRSB"
   | LDRSH => "LDRSH"
   | LDRSW => "LDRSW"
+  | LDRW => "LDRW"
   | LDP => "LDP"
   | STR => "STR"
   | STRB => "STRB"
@@ -2813,6 +2815,11 @@ Definition armv8a_CSETM_instr := mk_cset_instr CSETM (armv8a_CSETM_semi (ws := o
      constant bits(datasize) data = Mem[address, datasize DIV 8, accdesc];
      X[t, regsize] = ZeroExtend(data, regsize);
 *)
+(* LDRW is LDR with a W destination register used for a 64-bit result: the
+   load writes [X[t, 32] = ZeroExtend(data, 32)], and a write to the W form of
+   a register clears its upper 32 bits, so the word is zero-extended to 64
+   bits. It is written [LDR <Wt>, ...] and valid at the 64-bit operand size
+   only, like LDRSW. *)
 Definition armv8a_load_instr mn : instr_desc_t :=
   let wacc :=
     if wsize_of_narrow_load_mn mn is Some ws'
@@ -2839,11 +2846,13 @@ Definition armv8a_load_instr mn : instr_desc_t :=
     id_doit := DOIT;
     (* The transferred register of the zero-extending narrow loads is
        always a W register ([LDRB <Wt>, ...]); the sign-extending loads
-       name it at the operand size ([LDRSB <Wt>|<Xt>, ...]). *)
+       name it at the operand size ([LDRSB <Wt>|<Xt>, ...]). LDRW is
+       printed as LDR. *)
     id_pp_asm :=
-      pp_armv8a_op_szs mn
-        [:: (match mn with LDRB | LDRH => U32 | _ => osz end); osz ];
-    id_valid := osz_valid && (if mn is LDRSW then osz == U64 else true);
+      pp_armv8a_op_szs (if mn is LDRW then LDR else mn)
+        [:: (match mn with LDRB | LDRH | LDRW => U32 | _ => osz end); osz ];
+    id_valid :=
+      osz_valid && (match mn with LDRSW | LDRW => osz == U64 | _ => true end);
     id_wf := refl_equal;
   |}.
 
@@ -4147,6 +4156,7 @@ Definition mn_desc (mn : armv8a_mnemonic) : instr_desc_t :=
   | LDRSB => armv8a_load_instr LDRSB
   | LDRSH => armv8a_load_instr LDRSH
   | LDRSW => armv8a_load_instr LDRSW
+  | LDRW => armv8a_load_instr LDRW
   | LDP => armv8a_LDP_instr
   | STR => armv8a_store_instr STR
   | STRB => armv8a_store_instr STRB
