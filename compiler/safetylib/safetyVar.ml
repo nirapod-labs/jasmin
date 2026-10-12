@@ -64,7 +64,8 @@ let string_of_atype = function
   | Avar s -> "v_" ^ s.v_name
   | Aarray t -> "a_" ^ t.v_name
   | AarraySlice (t,ws,int) ->
-    Format.asprintf "ael_%s_%d_%d" t.v_name (int_of_ws ws) int
+    "ael_" ^ t.v_name ^ "_" ^ string_of_int (int_of_ws ws)
+    ^ "_" ^ string_of_int int
 
 let string_of_mvar = function
   | Temp (s, i, _) -> "tmp_" ^ s ^ "_" ^ string_of_int i
@@ -144,13 +145,26 @@ let get_at = function
 (*---------------------------------------------------------------*)
 (* We log the result to be able to inverse it. *)
 let log_var = Hashtbl.create 16
-let reset () = Hashtbl.reset log_var
-    
+
+(* APRON variables by name: an APRON variable is an immutable value, and
+   building one allocates; the analysis converts the same variables over and
+   over. *)
+let avar_cache : (string, Var.t) Hashtbl.t = Hashtbl.create 4096
+
+let reset () =
+  Hashtbl.reset log_var;
+  Hashtbl.reset avar_cache
+
 let avar_of_mvar a =
   let s = string_of_mvar a in
-  if not(Hashtbl.mem log_var s) then
-    Hashtbl.add log_var s a;
-  Var.of_string s
+  match Hashtbl.find_opt avar_cache s with
+  | Some v -> v
+  | None ->
+    if not(Hashtbl.mem log_var s) then
+      Hashtbl.add log_var s a;
+    let v = Var.of_string s in
+    Hashtbl.add avar_cache s v;
+    v
 
 let mvar_of_svar s =
   try Hashtbl.find log_var s with
