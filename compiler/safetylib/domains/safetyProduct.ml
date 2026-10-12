@@ -507,11 +507,26 @@ module PIMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extended_o
       List.filter (fun v -> List.mem v.v_name v_rel) PW.main.f_args
       |> Sv.of_list
 
+  (* The loop variables in [vs], with the variables they depend on and those
+     that depend on them. *)
+  let loop_closure vs = Sv.union (flow_to dp vs) (leads_to dp vs)
+
+  (* The variables of the functions named [names]. *)
+  let vars_of_funs names =
+    List.fold_left (fun acc f ->
+        if List.mem f.f_name.fn_name names then Sv.union acc (vars_fc f)
+        else acc)
+      Sv.empty (snd PW.prog)
+
   let v_rel : Sv.t =
     let v_rel = flow_to dp sv_ini in
-    let v_while = flow_to dp pa_res.while_vars in
-    let v_while = Sv.union (leads_to dp pa_res.while_vars) v_while in
-    (* let v_while = pa_res.while_vars in *)
+    let v_while =
+      if Config.sc_relational_loop_vars () then loop_closure pa_res.while_vars
+      else match Config.sc_relational_loop_vars_in () with
+        | [] -> Sv.empty
+        | names ->
+          let fv = vars_of_funs names in
+          Sv.inter fv (loop_closure (Sv.inter pa_res.while_vars fv)) in
     Sv.union v_rel v_while
 
   (* v is a pointer variable iff there is a direct flow from the intersection
