@@ -112,6 +112,12 @@ let arr_size v = match v.v_ty with
   | Arr (ws,_) -> ws
   | _ -> assert false
 
+let untracked_cell = function
+  | Mlocal (AarraySlice (v,_,_)) | Mglobal (AarraySlice (v,_,_)) ->
+    let m = Config.sc_array_track_max_bytes () in
+    m >= 0 && arr_range v * size_of_ws (arr_size v) > m
+  | _ -> false
+
 let ty_atype = function
   | Avar s -> s.v_ty
   | Aarray t -> t.v_ty
