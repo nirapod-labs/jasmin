@@ -123,6 +123,16 @@ let default =
                    ("example", range_ex_json)]);
   } ::
 
+  { p    = Int (-1);
+    name = "array_track_max_bytes";
+    desc = `String "Arrays of more than this many bytes are not tracked by the \
+            numerical domains: the values of their cells are unknown, and the \
+            cells are not dimensions of the abstract state, whose cost grows \
+            with its number of dimensions. The initialization of the cells and \
+            the bounds of the indices into these arrays are still checked. \
+            Can only add alarms. A negative value tracks every array.";
+  } ::
+
   { p    = Int 1;
     name = "k_unroll";
     desc = `String "Number of unrolling of a loop body before applying the \
@@ -302,6 +312,7 @@ let find_initprint name () =
 let sc_input_ranges            = find_ranges     "input_range"
 let sc_comp_pass               = find_comppass   "compilation_pass"
 let sc_k_unroll                = find_int        "k_unroll"
+let sc_array_track_max_bytes   = find_int        "array_track_max_bytes"
 let sc_call_policy             = find_callpolicy "call_policy"
 let sc_widening_out            = find_bool       "widening_out"
 let sc_zero_threshold          = find_bool       "zero_threshold"

@@ -43,6 +43,11 @@ val mvar_ignore  : mvar -> bool
 (*---------------------------------------------------------------*)
 val arr_range : var -> int
 val arr_size  : var -> wsize
+
+(* A cell of an array of more than [array_track_max_bytes] bytes (see
+   SafetyConfig): it is not a dimension of the numerical domains, and its
+   value is unknown. *)
+val untracked_cell : mvar -> bool
 val ty_mvar   : mvar -> ty
 
 (*---------------------------------------------------------------*)

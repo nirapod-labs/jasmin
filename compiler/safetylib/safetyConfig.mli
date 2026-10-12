@@ -18,6 +18,7 @@ type init_print = IP_None  | IP_NoArray | IP_All
 val sc_input_ranges            : unit -> input_range list
 val sc_comp_pass               : unit -> Compiler.compiler_step
 val sc_k_unroll                : unit -> int
+val sc_array_track_max_bytes   : unit -> int
 val sc_zero_threshold          : unit -> bool
 val sc_param_threshold         : unit -> bool
 val sc_more_threshold          : unit -> bool
