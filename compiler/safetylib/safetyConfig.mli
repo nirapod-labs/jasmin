@@ -28,6 +28,8 @@ val sc_if_disj                 : unit -> bool
 val sc_pif_movecc_as_if        : unit -> bool
 val sc_while_flags_setfrom_dep : unit -> bool
 val sc_dynamic_packing         : unit -> bool
+val sc_relational_loop_vars    : unit -> bool
+val sc_relational_loop_vars_in : unit -> string list
 val sc_call_policy             : unit -> call_policy
   
 (* Printing parameters *)

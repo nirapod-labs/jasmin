@@ -99,6 +99,7 @@ type pvalue = | Bool        of bool
               | CallPolicy  of call_policy
               | CompPass    of Compiler.compiler_step
               | InputRanges of input_range list
+              | Strings     of string list
 
 type param = { 
   p     : pvalue;
@@ -174,6 +175,24 @@ let default =
     desc = `String "Pre-analysis looks for the variable corresponding to return \
             boolean flags appearing in while loop condition (adding them to \
             the set of variables in the relational domain).";
+  } ::
+
+  { p    = Bool true;
+    name = "relational_loop_vars";
+    desc = `String "With static packing, the variables of while loop \
+            conditions, with the variables they depend on and those that \
+            depend on them, are in the relational domain. If false, only \
+            those of the functions named in relational_loop_vars_in are. \
+            Keeping fewer variables in the relational domain makes each \
+            operation cheaper and can only add alarms.";
+  } ::
+
+  { p    = Strings [];
+    name = "relational_loop_vars_in";
+    desc = `String "When relational_loop_vars is false: the functions whose \
+            while loop variables stay in the relational domain, together \
+            with the variables of the same functions that they depend on or \
+            that depend on them.";
   } ::
 
   { p    = Bool false;
@@ -315,6 +334,12 @@ let find_callpolicy name () =
     | _ -> None in
   List.find_map f !config
 
+let find_strings name () =
+  let f param = match param.p with
+    | Strings l when param.name = name -> Some l
+    | _ -> None in
+  List.find_map f !config
+
 let find_initprint name () =
   let f param = match param.p with
     | InitPrint i when param.name = name -> Some i
@@ -336,6 +361,8 @@ let sc_if_disj                 = find_bool       "if_disjunction"
 let sc_pif_movecc_as_if        = find_bool       "pif_movecc_as_if"
 let sc_while_flags_setfrom_dep = find_bool       "while_flags_setfrom_dep"
 let sc_dynamic_packing         = find_bool       "dynamic_packing"
+let sc_relational_loop_vars    = find_bool       "relational_loop_vars"
+let sc_relational_loop_vars_in = find_strings    "relational_loop_vars_in"
 let sc_print_program           = find_bool       "print_program"
 let sc_print_stats             = find_bool       "print_stats"
 let sc_arr_no_print            = find_bool       "arr_no_print"
@@ -399,6 +426,15 @@ let change param (t : Json.Basic.t) = match param.p, t with
   | InputRanges _, _ ->
     raise (BadSafetyConfig (param.name ^ " must be a dictionary"))
 
+  | Strings _, `List l ->
+    let str = function
+      | `String s -> s
+      | _ -> raise (BadSafetyConfig (param.name ^ " must be a list of strings"))
+    in
+    { param with p = Strings (List.map str l) }
+  | Strings _, _ ->
+    raise (BadSafetyConfig (param.name ^ " must be a list of strings"))
+
 
 (* -------------------------------------------------------------------- *)
 let rec of_json config (data : Json.Basic.t) =
@@ -439,7 +475,8 @@ let rec to_json_gen f config : Json.Basic.t =
       | InitPrint i -> `String (ip_to_string i)
       | CallPolicy p -> `String (pol_to_string p)
       | CompPass p -> `String (fst (Glob_options.print_strings p))
-      | InputRanges irs -> `Assoc (irs_to_json irs) in
+      | InputRanges irs -> `Assoc (irs_to_json irs)
+      | Strings l -> `List (List.map (fun s -> `String s) l) in
     param.name, (f param t) in
 
   let data = List.map doit config in

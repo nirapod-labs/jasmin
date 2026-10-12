@@ -1,0 +1,20 @@
+// The loop reads p[0 .. n-1] for n <= 8: bounding the accesses needs the
+// relation between the counter and the loop bound.
+inline fn sum(reg u64 p n) -> reg u64 {
+  reg u64 i s t;
+  s = 0;
+  i = 0;
+  while (i < n) {
+    t = [:u64 p + 8 * i];
+    s += t;
+    i += 1;
+  }
+  return s;
+}
+
+export fn scan(reg u64 p n) -> reg u64 {
+  reg u64 s;
+  s = 0;
+  if (n <= 8) { s = sum(p, n); }
+  return s;
+}
