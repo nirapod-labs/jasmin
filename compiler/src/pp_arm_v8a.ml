@@ -81,6 +81,20 @@ let pp_vregister (sz : Wsize.wsize) (r : vregister) =
       hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
         "no 256-bit view of a SIMD&FP register"
 
+(* A vector element operand [Vn.Ts[index]], for the element size [sz]. *)
+let pp_velement (sz : Wsize.wsize) (r : vregister) index =
+  let ts =
+    match sz with
+    | Wsize.U8 -> "b"
+    | Wsize.U16 -> "h"
+    | Wsize.U32 -> "s"
+    | Wsize.U64 -> "d"
+    | _ ->
+        hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+          "no vector element of this size"
+  in
+  Format.asprintf "%s.%s[%s]" (pp_vregister_name r) ts (Z.to_string index)
+
 (* A64 has no conditional execution: a condition is always a proper operand
    (CSEL, CSET, ...), declared last in the argument list, so it is printed
    in place like any other operand. *)
@@ -112,6 +126,34 @@ let pp_arg (a : (register, Arch_utils.empty, vregister, rflag, condt) pp_arg) =
       if Z.equal n Z.zero then None
       else Some (Format.asprintf "%s %s" sk (pp_imm n))
   | PPa_shift _ -> assert false
+
+(* The operands of an instruction, as its description requests them
+   ([pp_arg]). The element operands listed by [velem_operands]
+   (armv8a_instr_decl.v) fold a vector register and an immediate index into
+   [Vn.Ts[index]]; the index is not printed on its own. *)
+let pp_asm_args mn (args : (register, Arch_utils.empty, vregister, rflag, condt) pp_arg list) =
+  let elems =
+    List.map (fun (r, i) -> (Conv.int_of_nat r, Conv.int_of_nat i)) (velem_operands mn)
+  in
+  let index i =
+    match List.nth_opt args i with
+    | Some (PPa_full (_, Imm (ws, w))) -> Conv.z_unsigned_of_word ws w
+    | _ ->
+        hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+          "vector element index is not an immediate"
+  in
+  List.concat
+    (List.mapi
+       (fun k a ->
+         if List.exists (fun (_, i) -> i = k) elems then []
+         else
+           match List.assoc_opt k elems, a with
+           | None, _ -> Option.map_default (fun s -> [ s ]) [] (pp_arg a)
+           | Some i, PPa_full (sz, XReg r) -> [ pp_velement sz r (index i) ]
+           | Some _, _ ->
+               hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+                 "vector element of a non-vector register")
+       args)
 
 let pp_mnemonic (ARMv8A_op (mn, _) as op) =
   let id = instr_desc Armv8a_decl.armv8a_decl Armv8a_instr_decl.armv8a_op_decl (None, op) in
@@ -222,7 +264,8 @@ module Armv8aTarget : AsmTargetBuilder.AsmTarget with
         | ARMv8A_op (ADR, _), [ dst; Addr (Arip r) ] ->
             pp_ADR (pp_asm_arg dst) (pp_rip_address r)
         | _, _ ->
-            [ Instr (pp_mnemonic op, List.filter_map pp_arg pp.pp_aop_args) ]
+            let (ARMv8A_op (mn, _)) = op in
+            [ Instr (pp_mnemonic op, pp_asm_args mn pp.pp_aop_args) ]
 
 end
 
