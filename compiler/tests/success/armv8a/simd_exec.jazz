@@ -1,6 +1,7 @@
 /*
- * Fixed-input checks of the Advanced SIMD permutations and element moves
- * and of the SHA-3 instructions, evaluated by tests/exec/exec_armv8a.ml.
+ * Fixed-input checks of the Advanced SIMD permutations and element moves,
+ * of BSL and BIT and of the SHA-3 instructions, evaluated by
+ * tests/exec/exec_armv8a.ml.
  * Byte i of the first permutation input is i and byte i of the second is
  * 16 + i, so that every element of a result names the element it comes
  * from.
@@ -172,5 +173,25 @@ fn sha3_xar() -> reg u128, reg u128, reg u128, reg u128 {
   r1 = #XAR(a, b, 7);
   r2 = #XAR(a, b, 32);
   r3 = #XAR(a, b, 63);
+  return r0, r1, r2, r3;
+}
+
+/* BSL and BIT on the vectors of SHA3_IN, in which each of the eight
+   combinations of three bits occurs at some position. Each result bit
+   comes from one of two operands under the control of the third. */
+export
+fn bitsel_ops() -> reg u128, reg u128, reg u128, reg u128 {
+  reg u128 a b c r0 r1 r2 r3;
+  a = SHA3_IN[0];
+  b = SHA3_IN[1];
+  c = SHA3_IN[2];
+  r0 = a;
+  r0 = #VBSL(r0, b, c);
+  r1 = b;
+  r1 = #VBSL(r1, c, a);
+  r2 = a;
+  r2 = #VBIT(r2, b, c);
+  r3 = c;
+  r3 = #VBIT(r3, a, b);
   return r0, r1, r2, r3;
 }
