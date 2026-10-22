@@ -209,4 +209,63 @@ end
 
 module Armv8aBuilder = AsmTargetBuilder.Make(Armv8aTarget)
 
-let print_prog fmt prog = PrintASM.pp_asm fmt (Armv8aBuilder.asm_of_prog prog)
+(* A protect is assembled as [ORR d, a, msf] followed by [CSDB] (see
+   [assemble_slh_protect] in armv8a_extra.v). The CSDB keeps every
+   instruction after it in program order, other than a branch, from using
+   the results of data value or condition flag predictions made for the
+   instructions before it. In a run
+
+     ORR d1, a1, b1; CSDB; ORR d2, a2, b2; CSDB; ...; ORR dn, an, bn; CSDB
+
+   the CSDBs other than the last are dropped, provided that no ORR of the
+   run reads a register written by an earlier ORR of the run. The only
+   instructions moved before a CSDB are then register-to-register ORRs,
+   which do not access memory, branch or read a protected value. Every
+   later instruction, and so every use of d1 to dn, still comes after the
+   last CSDB. A CSDB has no architectural effect, so the printed program
+   computes what the assembly program does. The run must be adjacent in the
+   assembly code: a label, a call or any other instruction in between ends
+   it. *)
+let merge_csdb body =
+  let is_csdb i =
+    match i.asmi_i with
+    | AsmOp (ARMv8A_op (CSDB, _), []) -> true
+    | _ -> false
+  in
+  let orr_regs i =
+    match i.asmi_i with
+    | AsmOp (ARMv8A_op (ORR, { has_shift = None; _ }), [ Reg d; Reg a; Reg b ]) ->
+        Some (d, a, b)
+    | _ -> None
+  in
+  (* [written]: the registers written by the ORRs of the current run whose
+     CSDB was dropped. *)
+  let rec merge written = function
+    | o :: c :: rest when is_csdb c && Option.is_some (orr_regs o) ->
+        let d, _, _ = Option.get (orr_regs o) in
+        let written = d :: written in
+        let continues =
+          match rest with
+          | o' :: c' :: _ when is_csdb c' -> (
+              match orr_regs o' with
+              | Some (_, a', b') ->
+                  not (List.mem a' written || List.mem b' written)
+              | None -> false)
+          | _ -> false
+        in
+        if continues then o :: merge written rest
+        else o :: c :: merge [] rest
+    | i :: rest -> i :: merge [] rest
+    | [] -> []
+  in
+  merge [] body
+
+let merge_csdb_prog prog =
+  { prog with
+    asm_funcs =
+      List.map
+        (fun (fn, fd) -> (fn, { fd with asm_fd_body = merge_csdb fd.asm_fd_body }))
+        prog.asm_funcs }
+
+let print_prog fmt prog =
+  PrintASM.pp_asm fmt (Armv8aBuilder.asm_of_prog (merge_csdb_prog prog))

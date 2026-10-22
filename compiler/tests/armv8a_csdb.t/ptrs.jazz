@@ -1,0 +1,17 @@
+export
+fn ptrs() -> reg u64 {
+  stack u64[2] s t;
+  reg ptr u64[2] p q;
+  reg u64 v w msf;
+  v = 0;
+  s[0] = v; s[1] = v; t[0] = v; t[1] = v;
+  msf = #init_msf();
+  p = s;
+  q = t;
+  p = #protect_ptr(p, msf);
+  q = #protect_ptr(q, msf);
+  v = p[0];
+  w = q[1];
+  v += w;
+  return v;
+}
