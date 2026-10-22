@@ -53,6 +53,24 @@ val do_toec :
     ('reg, 'regx, 'xreg, 'rflag, 'cond, 'asm_op, 'extra_op) Arch_extra.extended_op Sopn.asm_op_t)
    prog
 
+(* The safety model of a program: its safety conditions as assertions, with
+   explicit initialisation masks. *)
+val do_safety :
+  (module Arch_full.Arch
+     with type reg = 'reg
+      and type regx = 'regx
+      and type xreg = 'xreg
+      and type rflag = 'rflag
+      and type cond = 'cond
+      and type asm_op = 'asm_op
+      and type extra_op = 'extra_op) ->
+  (unit,
+    ('reg, 'regx, 'xreg, 'rflag, 'cond, 'asm_op, 'extra_op) Arch_extra.extended_op Sopn.asm_op_t)
+   prog ->
+  (unit,
+    ('reg, 'regx, 'xreg, 'rflag, 'cond, 'asm_op, 'extra_op) Arch_extra.extended_op Sopn.asm_op_t)
+   prog
+
 val compile :
   (module Arch_full.Arch
      with type reg = 'reg
