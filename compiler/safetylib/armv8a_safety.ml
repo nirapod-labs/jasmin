@@ -12,7 +12,7 @@ module Armv8a_safety
   (A: Arch_full.Arch
       with type reg = Armv8a_decl.register
        and type regx = Arch_utils.empty
-       and type xreg = Arch_utils.empty
+       and type xreg = Armv8a_decl.vregister
        and type rflag = Arm_common.rflag
        and type cond = Arm_common.condt
        and type asm_op = Armv8a_instr_decl.armv8a_asm_op
@@ -20,7 +20,7 @@ module Armv8a_safety
   : SafetyArch
     with type reg = Armv8a_decl.register
      and type regx = Arch_utils.empty
-     and type xreg = Arch_utils.empty
+     and type xreg = Armv8a_decl.vregister
      and type rflag = Arm_common.rflag
      and type cond = Arm_common.condt
      and type asm_op = Armv8a_instr_decl.armv8a_asm_op
