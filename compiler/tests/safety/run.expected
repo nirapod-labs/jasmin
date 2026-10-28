@@ -142,6 +142,42 @@ Analyzing function ldp_uninit
 
 Program is not safe!
 
+File fail/armv8a/range_space.jazz (on arch armv8a):
+Analyzing function range_space
+
+
+*** Possible Safety Violation(s):
+  range_space return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551630]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551630, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551630]
+
+
+
+Program is not safe!
+
+File fail/armv8a/range_whole.jazz (on arch armv8a):
+Analyzing function range_whole
+
+
+*** Possible Safety Violation(s):
+  range_whole return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551616]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551616, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551616]
+
+
+
+Program is not safe!
+
 File fail/common/array-len3.jazz (on arch x86-64):
 Analyzing function array
 
@@ -1536,6 +1572,42 @@ Memory ranges:
   
 * Rel:
 ⊤
+
+
+
+Program is not safe!
+
+File fail/x86-64/range_space.jazz (on arch x86-64):
+Analyzing function range_space
+
+
+*** Possible Safety Violation(s):
+  range_space return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551630]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551630, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551630]
+
+
+
+Program is not safe!
+
+File fail/x86-64/range_whole.jazz (on arch x86-64):
+Analyzing function range_whole
+
+
+*** Possible Safety Violation(s):
+  range_whole return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551616]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551616, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551616]
 
 
 

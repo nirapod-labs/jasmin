@@ -2062,11 +2062,19 @@ end = struct
       let final_st = check_safety final_st (InReturn main_decl.f_name) conds in
 
       (* The memory ranges are the regions that the input pointers must
-         point to: no memory region satisfies an unbounded range. *)
+         point to: no memory region satisfies an unbounded range, nor a
+         range of more bytes than the address space has. A range of
+         exactly as many bytes is satisfied only by the whole address
+         space from address 0, which no caller provides; it is what a
+         pointer moved backwards gives, its offset taken modulo 2^n.
+         Such ranges arise when a pointer is moved by a value the
+         analysis does not bound, or moved down. *)
+      let space = Scalar.of_mpqf (mpq_pow (int_of_ws Arch.pointer_data)) in
       let final_st =
         List.filter_map (fun (MemLoc x as m) ->
             let itv = AbsDom.bound_variable final_st.abs (MmemRange m) in
             if Scalar.is_infty itv.inf = 0 && Scalar.is_infty itv.sup = 0
+               && Scalar.cmp itv.sup space < 0
             then None
             else Some (InReturn main_decl.f_name, BoundedRange x))
           final_st.env.m_locs
