@@ -98,9 +98,12 @@ let thresholds_param env param tl =
         if List.mem gv.v_name param_pts
         then thrs_v v thrs
         else thrs
-      (* A cell region gets no threshold from -safetyparam: its name, [x.k],
-         is not an argument name. Whether it should follow [x] is P4b. *)
-      | MmemRange (MemCell _) -> thrs
+      (* A cell region follows its array: when -safetyparam names [x] as a
+         pointer, [x.k] gets the same threshold as [x]. *)
+      | MmemRange (MemCell (gv, _)) ->
+        if List.mem gv.v_name param_pts
+        then thrs_v v thrs
+        else thrs
       | _ -> thrs
     ) tl vars
 

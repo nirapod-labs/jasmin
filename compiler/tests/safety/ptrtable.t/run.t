@@ -29,6 +29,18 @@ A table, whole and through calls, keeps its lanes.
   $ ../../../jasmin-checksafety --arch=armv8a lanes_direct.jazz 2>&1 | grep -o -e "line [0-9]*" -e "in_bound: .*" -e "is_valid .*" -e "bounded memory range of .*" -e "is_init .*" -e "No Safety Violation"
   No Safety Violation
 
+
+The packing ties each lane's range to the length: the printed relations
+are what ranges.py compares with the export's contract.
+
+  $ ../../../jasmin-checksafety --arch=armv8a lanes.jazz 2>&1 | grep -o -e "inv_len ≥ mem_in\.[0-9]"
+  inv_len ≥ mem_in.0
+  inv_len ≥ mem_in.1
+  $ ../../../jasmin-checksafety --arch=armv8a lanes_sub.jazz 2>&1 | grep -o -e "inv_len ≥ mem_in\.[0-9]"
+  inv_len ≥ mem_in.1
+  $ ../../../jasmin-checksafety --arch=armv8a lanes_copy_ok.jazz 2>&1 | grep -o -e "inv_len ≥ mem_in\.[0-9]"
+  inv_len ≥ mem_in.1
+
 A callee without memory access that receives the table is analysed
 directly rather than from top, which would lose the cells' regions (it is
 the only case where the strategy may depend on the provenance; a callee
@@ -127,9 +139,12 @@ export argument, so no region exists for its cells.
   is_valid p +64u i u8
 
 The vector kernels' shape reloads both lane pointers at the top of every
-iteration and moves them by the block offset. Without the packing of P4b
-the ranges are not tied to the iteration count and the bounded-range check
-rejects them; P4a alone is not expected to pass this shape.
+iteration and moves them by the block offset. The packing ties the lane
+pointers to the table, but the offset of the block is not itself in the
+loop's relational closure, so the ranges are not tied to the iteration
+count and the bounded-range check rejects them. This is the precision gap
+recorded in P4-DESIGN 6.4; the library's own multi-way update exports use
+the same shape and are expected to end here until the offset is packed.
 
   $ ../../../jasmin-checksafety --arch=armv8a lanes_while.jazz 2>&1 | grep -o -e "line [0-9]*" -e "in_bound: .*" -e "is_valid .*" -e "bounded memory range of .*" -e "is_init .*" -e "No Safety Violation"
   bounded memory range of in.0

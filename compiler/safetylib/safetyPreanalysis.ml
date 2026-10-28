@@ -207,10 +207,19 @@ end = struct
         | Expr.Sglob  -> dp (* We ignore global variables  *)
         | Expr.Slocal -> match (L.unloc v'.gv).v_ty with
           | Bty _ -> add_dep dp v (L.unloc v'.gv) ct
-          | Arr _ -> dp end
+          (* A copy of an array: the destination depends on the source
+             array, so a table copied whole keeps its cells' packing. *)
+          | Arr _ -> add_dep dp v (L.unloc v'.gv) ct end
 
-    | Pget _ -> dp  (* We ignore array loads  *)
-    | Psub _ -> dp  (* We ignore sub-array copies  *)
+    (* A value read from a local array depends on the array: a lane pointer
+       loaded from a table is packed with the table, whose cells' regions
+       and the ranges recorded through them are then relational. *)
+    | Pget (_, _, _, y, _) when y.gs = Expr.Slocal ->
+      add_dep dp v (L.unloc y.gv) ct
+    | Pget _ -> dp
+    | Psub (_, _, _, y, _) when y.gs = Expr.Slocal ->
+      add_dep dp v (L.unloc y.gv) ct
+    | Psub _ -> dp
 
     (* We ignore loads for v, but we compute dependencies of v' in ei *)
     | Pload (_, _, ei) -> app_expr_load dp ei ct
