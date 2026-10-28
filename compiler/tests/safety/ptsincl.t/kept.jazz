@@ -1,0 +1,21 @@
+/* As lost.jazz, but the second iteration moves p back to a + 8, so every
+   iteration reads at a + 8. */
+export fn kept(reg u64 a) -> reg u64
+{
+  reg u64 p j r t;
+
+  p = a;
+  p += 8;
+  j = 0;
+  r = 1;
+  while (r != 0) {
+    t = (64u)[:u8 p];
+    r = t;
+    if (j == 1) {
+      p = a;
+      p += 8;
+    }
+    j = 1;
+  }
+  return r;
+}
