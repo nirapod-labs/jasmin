@@ -1174,15 +1174,34 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
         apply_offset_expr abs outv info y o
       else aeval_top_offset abs outv
 
+    (* [abs] is the state after the assignment, where [outv] already holds
+       its new value; [er] is linearized in it, so it must not contain
+       [outv]. The offset of [y] is still the old one. *)
     | Some outv, Papp2 (op2,el,er) -> begin match remove_Owi2 op2, el with
         | Oadd (Op_w ws), Pvar y when ws = Arch.pointer_data ->
-          if valid_offset_var abs ws_o y then
-            apply_offset_expr abs outv info y er
+          if valid_offset_var abs ws_o y && not (Sv.mem outv (vars_e er)) then
+            try apply_offset_expr abs outv info y er with
+            | Unop_not_supported _ | Binop_not_supported _ | If_not_supported ->
+              aeval_top_offset abs outv
           else aeval_top_offset abs outv
 
         | _ -> aeval_top_offset abs outv end
 
     | Some outv, _ -> aeval_top_offset abs outv
+
+  (* The base [y] of an assignment [out = y + e] at pointer width for which
+     [aeval_offset] computes the offset of [out] relative to [y]: [y] points
+     to exactly one region in [abs], the state before the assignment, and
+     [out] does not occur in [e]. *)
+  let offset_base abs ws_o outmv e =
+    match ty_gvar_of_mvar outmv, e with
+    | Some outv, Papp2 (op2, Pvar y, er) ->
+      begin match remove_Owi2 op2 with
+        | Oadd (Op_w ws) when ws = Arch.pointer_data
+                           && valid_offset_var abs ws_o y
+                           && not (Sv.mem outv (vars_e er)) -> Some y
+        | _ -> None end
+    | _ -> None
 
   (* Initialize variable or array elements. *)
   let a_init_mv_no_array mv abs = match mv with
@@ -1418,8 +1437,17 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
             AbsDom.assign_sexpr abs (Some loc) [mvar, s_expr]
         in
 
-        (* Points-to abstraction *)
-        let ptr_expr = ptr_expr_of_expr abs0 e in
+        (* Points-to abstraction. For [out = y + e] with [y] pointing to one
+           region [r], the offset abstraction below sets
+           [offset(out) = offset(y) + e], so [out] is [r]'s base plus
+           [offset(out)], whatever the variables of [e] point to: [out]
+           points to [r] alone. Any other expression points to every region
+           its variables point to. A memory access uses a pointer only when
+           it points to one region, so the union carried nothing an access
+           could use. *)
+        let ptr_expr = match offset_base abs0 out_ty mvar e with
+          | Some y -> PtVars [mvar_of_var y]
+          | None -> ptr_expr_of_expr abs0 e in
         let abs = AbsDom.assign_ptr_expr abs mvar ptr_expr in
 
         (* Offset abstraction *)

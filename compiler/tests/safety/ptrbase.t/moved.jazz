@@ -1,0 +1,23 @@
+/* Skip the whole 64-byte blocks of inlen by moving the base pointer, then
+   read the remaining inlen mod 64 bytes. Every read is in [in; in + inlen). */
+export fn moved(reg u64 in inlen) -> reg u64
+{
+  reg u64 off n i r w;
+  reg u8 b;
+
+  r = 0;
+  off = inlen;
+  off >>= 6;
+  off <<= 6;
+  n = inlen;
+  n -= off;
+  in += off;
+  i = 0;
+  while (i < n) {
+    b = [:u8 in + i];
+    w = (64u) b;
+    r ^= w;
+    i += 1;
+  }
+  return r;
+}
