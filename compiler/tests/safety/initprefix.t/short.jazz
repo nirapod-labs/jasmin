@@ -1,0 +1,15 @@
+/* No zero loop: bytes [n, 64) are unwritten when n < 64. */
+export fn short(reg u64 in) -> reg u64
+{
+  stack u8[64] buf;
+  reg u64 dst t r n;
+
+  n = 16;
+  dst = 0;
+  while (n >= 8) { t = [:u64 in + dst]; buf.[:u64 dst] = t; dst += 8; n -= 8; }
+  while (n > 0) { t = (64u)[:u8 in + dst]; buf[dst] = (8u)t; dst += 1; n -= 1; }
+  r = 0;
+  t = buf[:u64 0];
+  r ^= t;
+  return r;
+}

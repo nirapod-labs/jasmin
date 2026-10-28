@@ -1,0 +1,30 @@
+/* t is written only when w = 1 and read always; s is never written. The
+   read inside the second call and the read of s after it must alarm; a
+   return meet that went bottom would hide the second. */
+fn f(reg u64 v w) -> reg u64
+{
+  stack u8[8] t;
+  reg u64 i r;
+
+  if (w == 1) {
+    i = 0;
+    while (i < 8) { t[i] = (8u)v; i += 1; }
+  }
+  r = (64u)t[0];
+  return r;
+}
+
+export fn twice_after(reg u64 v) -> reg u64
+{
+  stack u8[8] s;
+  reg u64 one zero a b c;
+
+  one = 1;
+  zero = 0;
+  a = f(v, one);
+  b = f(v, zero);
+  c = (64u)s[0];
+  a ^= b;
+  a ^= c;
+  return a;
+}

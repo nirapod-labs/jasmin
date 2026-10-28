@@ -769,6 +769,20 @@ end = struct
 
       let abs = AbsDom.change_environment abs f_vars in
 
+      (* Initialised prefixes, declared after the environment change (which
+         replaces it): an export array argument is fully initialised (its
+         contract says so), a local array starts empty. *)
+      let abs =
+        List.fold_left (fun abs x -> match x.v_ty with
+            | Arr _ -> AbsExpr.ghost_declare_full abs x
+            | Bty _ -> abs)
+          abs main_decl.f_args in
+      let abs =
+        List.fold_left (fun abs mv -> match mv with
+            | Mlocal (Aarray x) -> AbsExpr.ghost_clear abs x
+            | _ -> abs)
+          abs (fun_locals ~expand_arrays:false main_decl) in
+
       (* We keep track of the initial values. *)
       let ves = List.fold_left2 (fun ves x oy -> match oy with
           | None -> ves
@@ -807,6 +821,13 @@ end = struct
           slice.as_wsize slice.as_len slice.as_offset in
       let is = List.map (function Mlocal at -> at | _ -> assert false) is in
       List.for_all (AbsDom.check_init state.abs) is
+      (* T2: an initialised prefix that covers the read proves it too. *)
+      || (match AbsExpr.aeval_cst_int state.abs slice.as_offset with
+          | Some i ->
+            let o = access_offset slice.as_access slice.as_wsize i in
+            let len = slice.as_len * size_of_ws slice.as_wsize in
+            AbsExpr.ghost_covers state.abs slice.as_arr o len
+          | None -> false)
 
     | InBound (n, slice) ->
       (* We check that:
@@ -1036,6 +1057,25 @@ end = struct
          else List.map (fun y -> (Lvar (L.mk_loc L._dummy y), None))
              f_decl.f_args) in
 
+    (* Initialised prefixes of the callee: a parameter from its argument,
+       a local array from nothing. *)
+    let abs =
+      if List.length f_decl.f_args = List.length es then
+        List.fold_left2 (fun abs x e -> match x.v_ty with
+            | Arr _ -> AbsExpr.ghost_bind abs x e
+            | Bty _ -> abs)
+          abs f_decl.f_args es
+      else
+        List.fold_left (fun abs x -> match x.v_ty with
+            | Arr _ -> AbsExpr.ghost_clear abs x
+            | Bty _ -> abs)
+          abs f_decl.f_args in
+    let abs =
+      List.fold_left (fun abs mv -> match mv with
+          | Mlocal (Aarray x) -> AbsExpr.ghost_clear abs x
+          | _ -> abs)
+        abs (fun_locals ~expand_arrays:false f_decl) in
+
     { state with abs = abs }
 
   (* Remark: handles variable initialization. *)
@@ -1050,9 +1090,16 @@ end = struct
     let f_decl = get_fun_def state.prog f |> oget in
     let f_vs = fun_args ~expand_arrays:true f_decl
                @ fun_locals ~expand_arrays:true f_decl in
+    (* The initialised prefixes go with the cells. *)
+    let f_ghosts =
+      List.filter_map (fun mv -> match mv with
+          | Mlocal (Aarray x) -> Some (AbsExpr.ghost_of x)
+          | _ -> None)
+        (fun_args ~expand_arrays:false f_decl
+         @ fun_locals ~expand_arrays:false f_decl) in
 
     (* We remove f variables *)
-    { state with abs = AbsDom.remove_vars state.abs f_vs }
+    { state with abs = AbsDom.remove_vars state.abs (f_vs @ f_ghosts) }
 
   let forget_stack_vars state = match state.cstack with
     | [_] | [] -> state
@@ -1149,9 +1196,20 @@ end = struct
        previous and new constraints.
        Also, every variable (of the callee or caller) which was initalized
        remains so. *)
+    (* Before the meet, the callee's ghosts are forgotten in the caller's
+       state: a ghost left behind by a missed removal cannot make the meet
+       bottom, and the meet then takes the callee's final value, which
+       forget_f_vars removes. *)
+    let callee_ghosts =
+      let f_decl = get_fun_def state.prog fname |> oget in
+      List.filter_map (fun mv -> match mv with
+          | Mlocal (Aarray x) -> Some (AbsExpr.ghost_of x)
+          | _ -> None)
+        (fun_args ~expand_arrays:false f_decl
+         @ fun_locals ~expand_arrays:false f_decl) in
     let abs = AbsDom.meet
         ~join_align:true
-        state.abs fstate.abs in
+        (AbsDom.forget_list state.abs callee_ghosts) fstate.abs in
     let state = { abs = abs;
                   it = fstate.it;
                   env = state.env;
@@ -1587,6 +1645,26 @@ end = struct
     let x = L.unloc x in
     List.init (max 0 (Conv.int_of_cz n)) (fun i -> SafetyVar.AarraySlice (x, U8, ofs + i))
 
+  (* The initialised prefix after an instruction wrote [lv], chosen on
+     [pre], the state before the instruction: an element write extends it
+     (T1), a sub-array write clears it (sub-array transfers are patch
+     (b)). *)
+  let ghost_of_lvalue pre abs lv = match lv with
+    | Laset (_, aa, ws, x, ei) ->
+      let w = size_of_ws ws in
+      let mult = match aa with
+        | Warray_.AAdirect -> 1
+        | Warray_.AAscale -> w in
+      let o = match AbsExpr.ghost_offset pre ei with
+        | Some mt when mult = 1 -> Some mt
+        | Some mt ->
+          Some (Mtexpr.binop Texpr1.Mul
+                  (Mtexpr.cst (Coeff.s_of_int mult)) mt)
+        | None -> None in
+      AbsExpr.ghost_write abs (L.unloc x) o w
+    | Lasub (_, _, _, x, _) -> AbsExpr.ghost_clear abs (L.unloc x)
+    | _ -> abs
+
   let aeval_syscall state sc lvs _es =
     match sc with
     | Syscall_t.RandomBytes (ws, len) ->
@@ -1656,6 +1734,7 @@ end = struct
             (AbsExpr.mvar_of_lvar state.abs ginstr.i_info lv)
             e in
         let abs = AbsExpr.update_prov state.abs abs [ lv, Some e ] in
+        let abs = ghost_of_lvalue state.abs abs lv in
         { state with abs = abs; }
 
       | Copn (lvs,tag,opn,es) ->
@@ -1687,6 +1766,7 @@ end = struct
              path [abs_assign_opn] took for it (#swap, #protect_ptr, an
              unknown result). *)
           let abs = AbsExpr.update_prov snap abs (List.combine lvs assgns) in
+          let abs = List.fold_left (ghost_of_lvalue snap) abs lvs in
 
           { state with abs = abs; }
         end
