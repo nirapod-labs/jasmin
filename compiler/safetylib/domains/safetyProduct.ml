@@ -569,9 +569,10 @@ module PIMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extended_o
     | MmemRange (MemLoc v) ->
       if Sv.mem v v_pt then Ppl 0 else Nrd 0
 
-    (* A region of a table cell is not made relational by P4a: the packing
-       of the lane ranges is P4b. *)
-    | MmemRange (MemCell _) -> Nrd 0
+    (* A cell region follows its array: it is relational exactly when the
+       region of the array would be. *)
+    | MmemRange (MemCell (v, _)) ->
+      if Sv.mem v v_pt then Ppl 0 else Nrd 0
 
     | Mglobal _
     | Mlocal (AarraySlice _)
@@ -783,8 +784,9 @@ module PIDynMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extende
     | MmemRange (MemLoc v) ->
       if Sv.mem v pt_ini then Ppl 0 else Nrd 0
 
-    (* As in the static packing: P4a adds no edge for a cell region. *)
-    | MmemRange (MemCell _) -> Nrd 0
+    (* As in the static packing: a cell region follows its array. *)
+    | MmemRange (MemCell (v, _)) ->
+      if Sv.mem v pt_ini then Ppl 0 else Nrd 0
 
     | Mglobal _
     | Mlocal (AarraySlice _)

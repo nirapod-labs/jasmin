@@ -14,8 +14,12 @@ Memory ranges:
   mem_i: [0; 0]
   
 * Rel:
-{inv_i ≤ 4294967295, inv_i ≥ 0, mem_a = 0, mem_i = 0}
+{inv_i ≤ 4294967295, inv_i ≥ 0, mem_a = 0, mem_a.0 = 0, mem_a.1 = 0, mem_a.2 = 0, mem_a.3 = 0, mem_i = 0}
 mem_a ∊ [0; 0]
+mem_a.0 ∊ [0; 0]
+mem_a.1 ∊ [0; 0]
+mem_a.2 ∊ [0; 0]
+mem_a.3 ∊ [0; 0]
 mem_i ∊ [0; 0]
 
 
@@ -92,8 +96,12 @@ Memory ranges:
   mem_i: [0; 0]
   
 * Rel:
-{inv_i ≤ 18446744073709551615, inv_i ≥ 0, mem_a = 0, mem_i = 0}
+{inv_i ≤ 18446744073709551615, inv_i ≥ 0, mem_a = 0, mem_a.0 = 0, mem_a.1 = 0, mem_a.2 = 0, mem_a.3 = 0, mem_i = 0}
 mem_a ∊ [0; 0]
+mem_a.0 ∊ [0; 0]
+mem_a.1 ∊ [0; 0]
+mem_a.2 ∊ [0; 0]
+mem_a.3 ∊ [0; 0]
 mem_i ∊ [0; 0]
 
 
@@ -1102,8 +1110,10 @@ Memory ranges:
   mem_t.1: [0; 0]
   
 * Rel:
-{mem_t = 0}
+{mem_t = 0, mem_t.0 = 0, mem_t.1 = 0}
 mem_t ∊ [0; 0]
+mem_t.0 ∊ [0; 0]
+mem_t.1 ∊ [0; 0]
 
 
 
@@ -1142,8 +1152,10 @@ Memory ranges:
   mem_t.1: [0; 0]
   
 * Rel:
-{mem_t = 0}
+{mem_t = 0, mem_t.0 = 0, mem_t.1 = 0}
 mem_t ∊ [0; 0]
+mem_t.0 ∊ [0; 0]
+mem_t.1 ∊ [0; 0]
 
 
 
@@ -1643,8 +1655,12 @@ Memory ranges:
   mem_i: [0; 0]
   
 * Rel:
-{inv_i ≤ 4294967295, inv_i ≥ 0, mem_a = 0, mem_i = 0}
+{inv_i ≤ 4294967295, inv_i ≥ 0, mem_a = 0, mem_a.0 = 0, mem_a.1 = 0, mem_a.2 = 0, mem_a.3 = 0, mem_i = 0}
 mem_a ∊ [0; 0]
+mem_a.0 ∊ [0; 0]
+mem_a.1 ∊ [0; 0]
+mem_a.2 ∊ [0; 0]
+mem_a.3 ∊ [0; 0]
 mem_i ∊ [0; 0]
 
 
