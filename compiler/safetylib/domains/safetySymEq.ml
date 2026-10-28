@@ -205,13 +205,22 @@ module SymExprImpl : SymExpr = struct
     (* We add the binding [v ↦ e] *)
     else { t with vsym = Mm.add v e t.vsym }
 
+  (* A target this domain does not bind (an array cell, a global) is
+     dropped from the batch, and every binding and every boolean
+     substitution that reads one of its bytes is cleared: the write changes
+     the bytes the dropped expression mentions, so a fact about them can no
+     longer be assumed. Clearing after the bound targets have been assigned
+     also removes a binding of the same batch that read the old value of a
+     dropped byte, which loses an exact fact and never keeps a wrong one. *)
   let assign_expr ?force:(force=false) t ves =
-    let ves = List.filter (fun (v,_) -> match v with
-        | Mlocal (AarraySlice _) -> false (* FIXME: add an option *)
-        | Mglobal _ -> false
-        | _ -> true
-      ) ves in
-    List.fold_left (assign_expr_one force) t ves
+    let is_dropped (v,_) = match v with
+      | Mlocal (AarraySlice _) | Mglobal _ -> true
+      | _ -> false in
+    let ves, dropped = List.partition (fun x -> not (is_dropped x)) ves in
+    let t = List.fold_left (assign_expr_one force) t ves in
+    List.fold_left (fun t (v, _) ->
+        List.fold_left v_clear t (u8_blast_var ~blast_arrays:true v))
+      t dropped
     
   let assign_bexpr t v btcons =
     let t = v_clear t v in
@@ -273,6 +282,12 @@ module SymExprImpl : SymExpr = struct
     bt'
 
   
+  (* FIXME: [v_clear] removes only the given [mvar]. A wide target (a u32,
+     a u64, a slice) leaves the entries that name its byte cells, so a fact
+     about a byte of it survives an unknown wide write through this path.
+     [assign_expr] blasts its dropped targets; this path should too, with
+     [u8_blast_vars ~blast_arrays:true l]. Not changed here: it forgets
+     strictly more and would move recorded outputs of the safety suite. *)
   let forget_list = List.fold_left v_clear
       
   let support t = ( List.map fst (Mm.bindings t.vsym),

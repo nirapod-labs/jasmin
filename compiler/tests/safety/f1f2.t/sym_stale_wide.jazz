@@ -1,0 +1,17 @@
+/* F2 across widths: b reads one byte of t, the write covers eight. A fix
+   that clears only the written variable, not its bytes, misses it. */
+export fn sym_stale_wide() -> reg u64
+{
+  stack u8[8] t;
+  stack u64[2] u;
+  reg u64 i r;
+  reg bool b;
+  t[:u64 0] = 0;
+  u[0] = 0;
+  u[1] = 0;
+  b = t[0] == 0;
+  t[:u64 0] = 1;
+  r = 0;
+  if (b) { i = 5; r = u[i]; }
+  return r;
+}
