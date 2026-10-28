@@ -1,0 +1,18 @@
+/* #protect_ptr is the identity on its first operand: the array it
+   returns is as initialized as the one it is given. */
+export fn protect_ptr(reg u64 x) -> reg u64
+{
+  stack u64[2] s;
+  reg ptr u64[2] p;
+  reg u64 ms r t;
+
+  s[0] = x;
+  s[1] = x;
+  ms = #init_msf();
+  p = s;
+  p = #protect_ptr(p, ms);
+  r = p[0];
+  t = p[1];
+  r ^= t;
+  return r;
+}

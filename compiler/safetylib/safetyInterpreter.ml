@@ -1265,15 +1265,15 @@ end = struct
     (* SLH operations *)
     | Sopn.Oslh op ->
       begin match op with
-      | SLHinit -> [Some (pcast Arch.msf_size (Pconst (Z.of_int 0)))]
-      | SLHupdate ->
-        let b, msf = as_seq2 es in
-        let msf = Pif (Bty (U Arch.msf_size), b, msf, pcast Arch.msf_size (Pconst (Z.of_int (-1)))) in
-        [Some msf]
-      | SLHmove -> let msf = as_seq1 es in [Some msf]
+      (* A flag decides no access: [#protect] is the identity in the source
+         semantics, as below. Its value is unknown, which over-approximates
+         any, and the pre-analysis keeps it out of the relational domain. *)
+      | SLHinit | SLHupdate | SLHmove -> opn_dflt n
       | SLHprotect _ | SLHprotect_ptr _ ->
         let x, _msf = as_seq2 es in
         [Some x]
+      (* Introduced by SLH lowering and removed by stack allocation, so it
+         exists only between those passes, where the checker cannot run. *)
       | SLHprotect_ptr_fail _ -> assert false
       end
 

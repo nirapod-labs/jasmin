@@ -142,6 +142,61 @@ Analyzing function ldp_uninit
 
 Program is not safe!
 
+File fail/armv8a/protect_loop_oob.jazz (on arch armv8a):
+Analyzing function protect_loop_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/armv8a/protect_loop_oob.jazz", line 18 (4-13): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/armv8a/protect_oob.jazz (on arch armv8a):
+Analyzing function protect_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/armv8a/protect_oob.jazz", line 13 (2-11): is_init a[i]
+  "fail/armv8a/protect_oob.jazz", line 13 (2-11): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/armv8a/protect_ptr_uninit.jazz (on arch armv8a):
+Analyzing function protect_ptr_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/armv8a/protect_ptr_uninit.jazz", line 15 (2-11): is_init p[0]
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
 File fail/armv8a/range_space.jazz (on arch armv8a):
 Analyzing function range_space
 
@@ -1898,6 +1953,61 @@ Memory ranges:
   
 * Rel:
 ⊤
+
+
+
+Program is not safe!
+
+File fail/x86-64/protect_loop_oob.jazz (on arch x86-64):
+Analyzing function protect_loop_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/protect_loop_oob.jazz", line 18 (4-13): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/x86-64/protect_oob.jazz (on arch x86-64):
+Analyzing function protect_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/protect_oob.jazz", line 13 (2-11): is_init a[i]
+  "fail/x86-64/protect_oob.jazz", line 13 (2-11): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/x86-64/protect_ptr_uninit.jazz (on arch x86-64):
+Analyzing function protect_ptr_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/protect_ptr_uninit.jazz", line 15 (2-11): is_init p[0]
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
 
 
 
