@@ -1,0 +1,17 @@
+/* IDIV of -7 by 2: the quotient is -3, so q + 3 is 0 and the read is in
+   bounds. */
+export fn idiv_neg(reg u64 a) -> reg u64
+{
+  reg u64[2] m;
+  reg u64 hi lo d q i x;
+
+  m[0] = a;
+  m[1] = a;
+  hi = -1;
+  lo = -7;
+  d = 2;
+  ?{ RAX = q } = #IDIV(hi, lo, d);
+  i = q + 3;
+  x = m[i];
+  return x;
+}
