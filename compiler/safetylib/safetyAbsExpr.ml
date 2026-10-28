@@ -346,6 +346,25 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     | 0 -> Some x
     | i -> Some (if 0 < i then Z.shift_left x i else Z.shift_right x (-i))
 
+  (* Integer quotient and remainder as the source semantics defines them
+     (proofs/lang/sem_op_total.v): the unsigned operators are Rocq's
+     [Z.div] and [Z.modulo], which round toward minus infinity, and the
+     signed ones are [Z.quot] and [Z.rem], which round toward zero. Zarith's
+     [Z.div] and [Z.rem] round toward zero, [Z.fdiv] toward minus infinity.
+     All four Rocq functions are total: a divisor of 0 gives 0 for the
+     quotient and the dividend for the remainder. *)
+  let zint_div sg x y =
+    if Z.equal y Z.zero then Z.zero
+    else match sg with
+      | Unsigned -> Z.fdiv x y
+      | Signed -> Z.div x y
+
+  let zint_mod sg x y =
+    if Z.equal y Z.zero then x
+    else match sg with
+      | Unsigned -> Z.sub x (Z.mul y (Z.fdiv x y))
+      | Signed -> Z.rem x y
+
   (* Try to evaluate e to a constant expression in abs *)
   let rec aeval_cst_zint abs e = match e with
     | Pvar x -> aeval_cst_var abs x
@@ -375,6 +394,17 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
 
     | Papp2 (Odiv (Unsigned, Op_int), e1, e2) ->
         obind2 (fun x y -> Some (Z.div x y))
+          (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
+
+    | Papp2 (Odiv (Signed, Op_int), e1, e2) ->
+        obind2 (fun x y -> Some (zint_div Signed x y))
+          (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
+
+    (* With the remainder evaluated, an index such as [t % 2] with [t] the
+       counter of an unrolled [for] loop names one cell, so a write there
+       initializes that cell instead of forgetting the whole array. *)
+    | Papp2 (Omod (sg, Op_int), e1, e2) ->
+        obind2 (fun x y -> Some (zint_mod sg x y))
           (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
 
     | Papp2 (Olsl Op_int, e1, e2) ->

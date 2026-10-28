@@ -470,6 +470,162 @@ mem_x ∊ [0; 0]
 
 Program is not safe!
 
+File fail/common/mod_index_oob.jazz (on arch x86-64):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch arm-m4):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch armv8a):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch riscv):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch x86-64):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch arm-m4):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch armv8a):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch riscv):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
 File fail/common/not_in_bounds.jazz (on arch x86-64):
 Analyzing function f
 
