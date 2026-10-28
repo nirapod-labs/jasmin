@@ -1,0 +1,14 @@
+/* A quotient by 0 is 0: t / 0 is 0 for every t, the written cell. */
+export fn div_index_zero(reg u32 a) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 x;
+  inline int t;
+
+  m[0] = a;
+  x = 0;
+  for t = 0 to 2 {
+    x ^= m[t / 0];
+  }
+  return x;
+}

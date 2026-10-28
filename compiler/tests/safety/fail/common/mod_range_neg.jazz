@@ -1,0 +1,17 @@
+/* For w = 0, ((uint) w - 1) % 2 + 1 is 2 (the remainder takes the sign of
+   the divisor), out of the bounds of m. With the remainder of a division
+   rounded toward zero it would range over [0; 1] and hide the
+   out-of-bounds read. */
+export fn mod_range_neg(reg u32 w) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 x;
+
+  m[0] = w;
+  m[1] = w;
+  x = 0;
+  if (w < 2) {
+    x = m[((uint) w - 1) % 2 + 1];
+  }
+  return x;
+}

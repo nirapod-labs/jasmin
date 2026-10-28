@@ -1,0 +1,16 @@
+/* For w = 0, ((uint) w - 1) / 2 is -1 (rounding toward minus infinity), out
+   of the bounds of m. The dividend ranges over [-1; 0]; rounding toward zero
+   would give the interval [0; 0] and hide the out-of-bounds read. */
+export fn div_range_neg(reg u32 w) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 x;
+
+  m[0] = w;
+  m[1] = w;
+  x = 0;
+  if (w < 2) {
+    x = m[((uint) w - 1) / 2];
+  }
+  return x;
+}
