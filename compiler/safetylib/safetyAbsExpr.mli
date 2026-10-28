@@ -51,6 +51,9 @@ module AbsExpr (Arch: SafetyArch.SafetyArch) (AbsDom : SafetyInterfaces.AbsNumBo
   val aeval_cst_zint : AbsDom.t -> expr -> Z.t option
   val aeval_cst_int : AbsDom.t -> expr  -> int option
 
+  (* The byte cells of an array, [AarraySlice (x, U8, 0)] to the last. *)
+  val arr_full_range : var -> atype list
+
   val abs_sub_arr_range :
     AbsDom.t -> (var * Expr.v_scope) ->
     Warray_.arr_access -> wsize -> int -> expr ->

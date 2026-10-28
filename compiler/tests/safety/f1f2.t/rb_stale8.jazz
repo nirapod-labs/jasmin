@@ -1,0 +1,17 @@
+/* F1 with eight bytes: r is zero after #randombytes with probability
+   2^-64, so the branch is taken and u[5] is out of bounds. */
+export fn rb_stale8() -> reg u64
+{
+  stack u64[1] t;
+  stack u64[2] u;
+  reg u64 i r;
+  t[0] = 0;
+  u[0] = 0;
+  u[1] = 0;
+  t = #randombytes(t);
+  r = t[0];
+  i = 0;
+  if (r != 0) { i = 5; }
+  r = u[i];
+  return r;
+}
