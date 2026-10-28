@@ -1422,6 +1422,25 @@ Bottom ⊥
 
 Program is not safe!
 
+File fail/x86-64/div_rem.jazz (on arch x86-64):
+Analyzing function div_rem
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/div_rem.jazz", line 14 (2-11): is_init m[r]
+  "fail/x86-64/div_rem.jazz", line 14 (2-11): in_bound: m[r] (length 16 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 18446744073709551615, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
 File fail/x86-64/idiv_overflow.jazz (on arch x86-64):
 Analyzing function idiv_overflow
 

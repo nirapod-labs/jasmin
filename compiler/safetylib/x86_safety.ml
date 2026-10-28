@@ -222,21 +222,25 @@ module X86_safety
       (*        low   *)
       rflags @ [Some w]
 
-    (* div unsigned *)
-    | Arch_extra.BaseOp (None, X86_instr_decl.DIV ws) ->
-      let n, d = split_div Unsigned ws es in
-      let w = Papp1 (Oword_of_int ws, Papp2 (Odiv(Unsigned, Op_int), n, d)) in
-      let rflags = rflags_of_div in
-      rflags @ [None; Some w]
-
-    (* div signed: IDIV rounds the quotient toward zero, which is the
-       signed integer quotient of the source ([Z.quot]), not the unsigned
-       one ([Z.div], toward minus infinity). *)
+    (* div unsigned, and div signed. The outputs after the flags are the
+       quotient (RAX) and the remainder (RDX), as in x86_DIV_t and
+       x86_IDIV_t; unlike MUL, the first one is not a high part. DIV
+       rounds the quotient toward minus infinity on non-negative
+       operands, which is the unsigned integer quotient of the source
+       ([Z.div]) and its remainder ([Z.modulo]). IDIV rounds toward zero:
+       the signed integer quotient [Z.quot] and remainder [Z.rem]. The
+       safety condition excludes a divisor of 0 and a quotient that does
+       not fit in a word. *)
+    | Arch_extra.BaseOp (None, X86_instr_decl.DIV ws)
     | Arch_extra.BaseOp (None, X86_instr_decl.IDIV ws) ->
-      let n, d = split_div Signed ws es in
-      let w = Papp1 (Oword_of_int ws, Papp2 (Odiv(Signed, Op_int), n, d)) in
+      let sg = match opn with
+        | Arch_extra.BaseOp (_, X86_instr_decl.IDIV _) -> Signed
+        | _ -> Unsigned in
+      let n, d = split_div sg ws es in
+      let q = Papp1 (Oword_of_int ws, Papp2 (Odiv(sg, Op_int), n, d)) in
+      let r = Papp1 (Oword_of_int ws, Papp2 (Omod(sg, Op_int), n, d)) in
       let rflags = rflags_of_div in
-      rflags @ [None; Some w]
+      rflags @ [Some q; Some r]
 
     (* increment *)
     | Arch_extra.BaseOp (None, X86_instr_decl.INC ws) ->
