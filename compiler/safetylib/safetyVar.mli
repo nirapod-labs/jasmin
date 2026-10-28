@@ -74,6 +74,10 @@ val get_at    : mvar -> atype
   be called between two analyses. *)
 val reset : unit -> unit
 
+(* The byte bases of the initialised-prefix ghosts of an array. *)
+val note_base  : var -> int -> unit
+val bases_of_var : var -> int list
+
 (*---------------------------------------------------------------*)
 val avar_of_mvar : mvar -> Apron.Var.t
                              

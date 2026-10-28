@@ -60,7 +60,8 @@ module AbsExpr (Arch: SafetyArch.SafetyArch) (AbsDom : SafetyInterfaces.AbsNumBo
      assigns 0, [ghost_copy] assigns [min (g(y, 0), size x)] by the three
      provable cases, and [ghost_bind] binds a parameter from an argument
      expression. *)
-  val ghost_of : var -> mvar
+  val ghost_of : ?base:int -> var -> mvar
+  val ghosts_of : var -> mvar list
   val ghost_declare_full : AbsDom.t -> var -> AbsDom.t
   val ghost_clear : AbsDom.t -> var -> AbsDom.t
   val ghost_copy : ?pre:AbsDom.t -> AbsDom.t -> var -> var -> AbsDom.t

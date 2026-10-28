@@ -428,7 +428,7 @@ Memory ranges:
   mem_v: [0; 0]
   
 * Rel:
-{g_x_0 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+{g_x_0 = 4, g_x_4 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
 mem_v ∊ [0; 0]
 
 
@@ -446,7 +446,7 @@ Memory ranges:
   mem_v: [0; 0]
   
 * Rel:
-{g_x_0 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+{g_x_0 = 4, g_x_4 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
 mem_v ∊ [0; 0]
 
 
@@ -464,7 +464,7 @@ Memory ranges:
   mem_v: [0; 0]
   
 * Rel:
-{g_x_0 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+{g_x_0 = 4, g_x_4 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
 mem_v ∊ [0; 0]
 
 
@@ -482,7 +482,7 @@ Memory ranges:
   mem_v: [0; 0]
   
 * Rel:
-{g_x_0 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+{g_x_0 = 4, g_x_4 = 0, inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
 mem_v ∊ [0; 0]
 
 

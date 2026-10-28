@@ -1092,9 +1092,9 @@ end = struct
                @ fun_locals ~expand_arrays:true f_decl in
     (* The initialised prefixes go with the cells. *)
     let f_ghosts =
-      List.filter_map (fun mv -> match mv with
-          | Mlocal (Aarray x) -> Some (AbsExpr.ghost_of x)
-          | _ -> None)
+      List.concat_map (fun mv -> match mv with
+          | Mlocal (Aarray x) -> AbsExpr.ghosts_of x
+          | _ -> [])
         (fun_args ~expand_arrays:false f_decl
          @ fun_locals ~expand_arrays:false f_decl) in
 
@@ -1196,15 +1196,17 @@ end = struct
        previous and new constraints.
        Also, every variable (of the callee or caller) which was initalized
        remains so. *)
-    (* Before the meet, the callee's ghosts are forgotten in the caller's
-       state: a ghost left behind by a missed removal cannot make the meet
-       bottom, and the meet then takes the callee's final value, which
-       forget_f_vars removes. *)
+    (* Before the meet, every ghost of every callee array is forgotten in
+       the caller's state, not only base 0: a base left behind by a missed
+       removal or created lazily would otherwise be intersected with the
+       callee's final value there, and a disagreement would make the meet
+       bottom, skipping every later check. Forgetting is top, and the meet
+       then takes the callee's final value, which forget_f_vars removes. *)
     let callee_ghosts =
       let f_decl = get_fun_def state.prog fname |> oget in
-      List.filter_map (fun mv -> match mv with
-          | Mlocal (Aarray x) -> Some (AbsExpr.ghost_of x)
-          | _ -> None)
+      List.concat_map (fun mv -> match mv with
+          | Mlocal (Aarray x) -> AbsExpr.ghosts_of x
+          | _ -> [])
         (fun_args ~expand_arrays:false f_decl
          @ fun_locals ~expand_arrays:false f_decl) in
     let abs = AbsDom.meet
@@ -1646,9 +1648,9 @@ end = struct
     List.init (max 0 (Conv.int_of_cz n)) (fun i -> SafetyVar.AarraySlice (x, U8, ofs + i))
 
   (* The initialised prefix after an instruction wrote [lv], chosen on
-     [pre], the state before the instruction: an element write extends it
-     (T1), a sub-array write clears it (sub-array transfers are patch
-     (b)). *)
+     [pre], the state before the instruction. An element write extends the
+     prefix (T1); a sub-array write is handled by assign_slice (T3/T4), so
+     nothing is done here for it. *)
   let ghost_of_lvalue pre abs lv = match lv with
     | Laset (_, aa, ws, x, ei) ->
       let w = size_of_ws ws in
@@ -1662,7 +1664,6 @@ end = struct
                   (Mtexpr.cst (Coeff.s_of_int mult)) mt)
         | None -> None in
       AbsExpr.ghost_write abs (L.unloc x) o w
-    | Lasub (_, _, _, x, _) -> AbsExpr.ghost_clear abs (L.unloc x)
     | _ -> abs
 
   let aeval_syscall state sc lvs _es =
@@ -2117,7 +2118,26 @@ end = struct
           { st_in with abs = abs }
         in
 
-        let st_out_ndisj = aeval_body f_decl.f_body st_in_ndisj in
+        (* R3.1: the callee's initialised prefixes are declared after the
+           input snapshot. [fa_in] keeps them top, so a later visit whose
+           argument prefix is shorter is still included; the declaration is
+           justified at every visit because [check_valid_call_top] proved
+           every argument byte initialised. The callee's local arrays start
+           empty, as on the direct path. *)
+        let st_body =
+          let abs =
+            List.fold_left (fun abs x -> match x.v_ty with
+                | Arr _ -> AbsExpr.ghost_declare_full abs x
+                | Bty _ -> abs)
+              st_in_ndisj.abs f_decl.f_args in
+          let abs =
+            List.fold_left (fun abs mv -> match mv with
+                | Mlocal (Aarray x) -> AbsExpr.ghost_clear abs x
+                | _ -> abs)
+              abs (fun_locals ~expand_arrays:false f_decl) in
+          { st_in_ndisj with abs } in
+
+        let st_out_ndisj = aeval_body f_decl.f_body st_body in
 
         (* We make a new function abstraction for f. Roughly, it is of the form:
            input |--> (output,effects) *)
