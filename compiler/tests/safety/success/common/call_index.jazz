@@ -1,0 +1,23 @@
+/* The index of t[x] is the new x, 1, though the old one is out of
+   bounds. */
+inline fn one() -> reg u64, reg u64
+{
+  reg u64 a b;
+
+  a = 1;
+  b = 7;
+  return a, b;
+}
+
+export fn call_index() -> reg u64
+{
+  reg u64[2] t;
+  reg u64 x r;
+
+  t[0] = 0;
+  t[1] = 0;
+  x = 5;
+  x, t[x] = one();
+  r = t[1];
+  return r;
+}

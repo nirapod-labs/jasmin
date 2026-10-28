@@ -1478,26 +1478,71 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
 
       | _ -> assert false
 
-  let abs_assign_opn abs loc lvs assgns =
-    let abs, mlvs_forget =
-      List.fold_left2 (fun (abs, mlvs_forget) lv e_opt ->
+  (* The variables an lvalue reads to locate what it writes. *)
+  let index_vars = function
+    | Lnone _ | Lvar _ -> Sv.empty
+    | Lmem (_, _, _, e) | Laset (_, _, _, _, e) | Lasub (_, _, _, _, e) ->
+      vars_e e
+
+  (* The source semantics of an operator (lang/psem_defs.v, [sem_sopn])
+     evaluates all its results from its arguments, then writes the lvalues
+     from left to right, each in the state the writes before it left
+     ([write_lvals]). Here the lvalues are written in the same order, so:
+     - a result that reads a variable an earlier lvalue has written would
+       see the new value (for [x, y = #swap(x, y)], [y] would receive the
+       new [x]): it is made unknown;
+     - an unknown scalar result is forgotten after the last write, so that
+       the results after it still read the old value; an lvalue whose index
+       reads such a variable first forgets every pending one, since its
+       index uses the new value;
+     - [check] checks the safety of each lvalue in the state just before
+       it is written. *)
+  let abs_assign_opn ?(check = fun abs _ -> abs) abs loc lvs assgns =
+    let forget abs pending =
+      AbsDom.forget_list abs (List.sort_uniq Stdlib.compare pending) in
+    let abs, pending, _, _ =
+      List.fold_left2 (fun (abs, pending, pending_vs, written) lv e_opt ->
+          let abs, pending, pending_vs =
+            if Sv.disjoint (index_vars lv) pending_vs
+            then abs, pending, pending_vs
+            else forget abs pending, [], Sv.empty in
+          let abs = check abs lv in
+          let e_opt = match e_opt with
+            | Some e when not (Sv.disjoint (vars_e e) written) -> None
+            | _ -> e_opt in
+          let x = match lv with
+            | Lvar x | Laset (_, _, _, x, _) | Lasub (_, _, _, x, _) ->
+              Some (L.unloc x)
+            | Lnone _ | Lmem _ -> None in
+          let add vs = match x with Some x -> Sv.add x vs | None -> vs in
           match mvar_of_lvar abs loc lv, e_opt with
-          | MLnone, _ -> (abs, mlvs_forget)
+          | MLnone, _ -> (abs, pending, pending_vs, written)
 
+          (* An unknown array result: its cells are unknown, and may be
+             uninitialized. *)
+          | MLvar (_, (Mlocal (Aarray _) as mv)), None ->
+            (remove_array_contents_mv abs mv, pending, pending_vs, add written)
+          | MLasub (_, ms), None ->
+            let cells = match ms.ms_offset with
+              | Some off ->
+                slice_cells ms.ms_v off (ms.ms_len * size_of_ws ms.ms_ws)
+              | None -> arr_full_range ms.ms_v in
+            (List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs,
+             pending, pending_vs, add written)
+
+          (* An unknown scalar result. *)
           | MLvar (_,mlv) as cmlv, None ->
-            (* Remark: n-ary operation cannot return arrays. *)
             let abs = a_init_mlv_no_array cmlv abs in
-            (abs, mlv :: mlvs_forget)
-          | MLvar _ as mlv, Some e ->
-            (abs_assign abs (ty_lval lv) mlv e, mlvs_forget)
+            (abs, mlv :: pending, add pending_vs, written)
 
-          | MLvars (_, mlvs), _ -> (abs, mlvs @ mlvs_forget)
-          | MLasub _, _ -> assert false (* opn do not return arrays. *)
-        ) (abs,[]) lvs assgns in
+          (* [#swap] can return arrays. *)
+          | (MLvar _ | MLasub _) as mlv, Some e ->
+            (abs_assign abs (ty_lval lv) mlv e, pending, pending_vs, add written)
 
-    let mlvs_forget = List.sort_uniq Stdlib.compare mlvs_forget in
+          | MLvars (_, mlvs), _ -> (abs, mlvs @ pending, add pending_vs, written)
+        ) (abs, [], Sv.empty, Sv.empty) lvs assgns in
 
-    AbsDom.forget_list abs mlvs_forget
+    forget abs pending
 
 end
 

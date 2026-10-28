@@ -81,5 +81,6 @@ module AbsExpr (Arch: SafetyArch.SafetyArch) (AbsDom : SafetyInterfaces.AbsNumBo
   val abs_assign : AbsDom.t -> ty -> mlvar -> expr -> AbsDom.t
 
   val abs_assign_opn :
+    ?check:(AbsDom.t -> lval -> AbsDom.t) ->
     AbsDom.t -> minfo -> lval list -> expr option list -> AbsDom.t
 end

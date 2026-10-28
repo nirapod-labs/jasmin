@@ -1,0 +1,16 @@
+/* The high half of the product, 2, goes to x before t[x] is written, so
+   the index is 2, out of bounds. */
+export fn mul_index() -> reg u64
+{
+  stack u64[2] t;
+  reg u64 x y z r;
+
+  t[0] = 0;
+  t[1] = 0;
+  x = 0;
+  y = 0x8000000000000000;
+  z = 4;
+  _, _, _, _, _, x, t[x] = #MUL(y, z);
+  r = t[0];
+  return r;
+}

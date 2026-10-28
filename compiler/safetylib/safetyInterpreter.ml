@@ -538,11 +538,18 @@ let rec safe_eassert cs e =
 
 let safe_instr pd asmOp ginstr = match ginstr.i_desc with
   | Cassgn (lv, _, _, e) -> safe_e_rec (safe_lval lv) e
-  | Copn (lvs,_,opn,es) -> safe_opn pd asmOp (safe_lvals lvs @ safe_es es) opn es
+  (* The lvalues of an operator with several results are checked one by
+     one, each just before it is written ([AbsExpr.abs_assign_opn]). *)
+  | Copn ([ _ ] as lvs,_,opn,es) -> safe_opn pd asmOp (safe_lvals lvs @ safe_es es) opn es
+  | Copn (_,_,opn,es) -> safe_opn pd asmOp (safe_es es) opn es
   | Cassert (_, e) -> safe_eassert [] e
   | Cif(e, _, _) -> safe_e e
   | Cwhile(_, _, _, _, _) -> []       (* We check the while condition later. *)
-  | Ccall(lvs, _, es) | Csyscall(lvs, _, es) -> safe_lvals lvs @ safe_es es
+  (* As for operators, the lvalues of a call with several results are
+     checked one by one, each just before it is written ([return_call]). *)
+  | Ccall(([] | [ _ ]) as lvs, _, es) -> safe_lvals lvs @ safe_es es
+  | Ccall(_, _, es) -> safe_es es
+  | Csyscall(lvs, _, es) -> safe_lvals lvs @ safe_es es
   | Cfor (_, (_, e1, e2), _) -> safe_es [e1;e2]
 
 let safe_return main_decl =
@@ -1129,9 +1136,22 @@ end = struct
     debug(fun () -> Format.eprintf "evaluating returned values ...@.");
     (* Finally, we assign the returned values in the corresponding lvalues *)
     let f_decl = get_fun_def fstate.prog fname |> oget in
-    let r_assgns = get_ret_assgns state.abs f_decl lvs in
-
-    let state = { state with abs = aeval_f_return state.abs r_assgns } in
+    let state = match lvs with
+      | [] | [ _ ] ->
+        let r_assgns = get_ret_assgns state.abs f_decl lvs in
+        { state with abs = aeval_f_return state.abs r_assgns }
+      | _ ->
+        (* As for an operator, the lvalues are written from left to right,
+           each located and checked in the state the writes before it left
+           ([write_lvals]): the index of [t[x]] in [x, t[x] = f()] is the
+           new [x]. *)
+        List.fold_left2 (fun state lv (out_ty, ret) ->
+            let state = check_safety state (InProg callsite) (safe_lval lv) in
+            let r_assgn =
+              get_ret_assgns state.abs
+                { f_decl with f_tyout = [ out_ty ]; f_ret = [ ret ] } [ lv ] in
+            { state with abs = aeval_f_return state.abs r_assgn })
+          state lvs (List.combine f_decl.f_tyout f_decl.f_ret) in
 
     debug(fun () ->
         Format.eprintf "forgetting %s local variables ...@.@." fname.fn_name);
@@ -1575,10 +1595,21 @@ end = struct
           let c2 = List.map (fun i_desc -> { ginstr with i_desc }) c2 in
           aeval_if ginstr b c1 c2 state
         | _ ->
-          (* Remark: the assignments must be done in the correct order. *)
           let assgns = split_opn (List.length lvs) opn es in
-          let abs = AbsExpr.abs_assign_opn state.abs ginstr.i_info lvs assgns in
-          let abs = List.fold_left AbsDom.meet_btcons abs (post_opn opn lvs es) in
+          let state = match lvs with
+            | [ _ ] ->
+              { state with
+                abs = AbsExpr.abs_assign_opn state.abs ginstr.i_info lvs assgns }
+            | _ ->
+              let st = ref state in
+              let check abs lv =
+                st := check_safety { !st with abs } (InProg ginstr.i_loc)
+                    (safe_lval lv);
+                (!st).abs in
+              let abs =
+                AbsExpr.abs_assign_opn ~check state.abs ginstr.i_info lvs assgns in
+              { !st with abs } in
+          let abs = List.fold_left AbsDom.meet_btcons state.abs (post_opn opn lvs es) in
 
           { state with abs = abs; }
         end

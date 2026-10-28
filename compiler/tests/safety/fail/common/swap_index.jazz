@@ -1,0 +1,16 @@
+/* The lvalues are written from left to right: #swap(z, y) returns (y, z),
+   so the index of t[x] is the new x, 7, out of bounds. */
+export fn swap_index() -> reg u64
+{
+  stack u64[2] t;
+  reg u64 x y z r;
+
+  t[0] = 0;
+  t[1] = 0;
+  x = 0;
+  y = 7;
+  z = 5;
+  x, t[x] = #swap(z, y);
+  r = t[0];
+  return r;
+}

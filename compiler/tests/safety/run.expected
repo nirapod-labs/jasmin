@@ -290,6 +290,62 @@ Analyzing function bad_read
 
 Program is not safe!
 
+File fail/common/call_index.jazz (on arch x86-64):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch arm-m4):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch armv8a):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch riscv):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
 File fail/common/div_index_neg.jazz (on arch x86-64):
 Analyzing function div_index_neg
 
@@ -1192,6 +1248,190 @@ mem_a ∊ [0; 0]
 
 Program is not safe!
 
+File fail/common/swap_index.jazz (on arch x86-64):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch arm-m4):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch armv8a):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch riscv):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch x86-64):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch arm-m4):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch armv8a):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch riscv):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch x86-64):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch arm-m4):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch armv8a):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch riscv):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
 File fail/common/wint_overflow.jazz (on arch x86-64):
 Analyzing function wint_overflow
 
@@ -1556,6 +1796,20 @@ Analyzing function addNumber
   "fail/x86-64/mul0.jazz", line 12 (26-49): termination
   
 Bottom ⊥
+
+
+Program is not safe!
+
+File fail/x86-64/mul_index.jazz (on arch x86-64):
+Analyzing function mul_index
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/mul_index.jazz", line 13 (2-38): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
 
 
 Program is not safe!

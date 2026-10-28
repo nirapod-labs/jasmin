@@ -1,0 +1,17 @@
+/* The low half of the product is computed from the old x, though the
+   high half is written to x first: z is 3. */
+export fn mul_pending() -> reg u64
+{
+  stack u64[4] t;
+  reg u64 x y z r;
+
+  t[0] = 0;
+  t[1] = 0;
+  t[2] = 0;
+  t[3] = 0;
+  x = 1;
+  y = 3;
+  _, _, _, _, _, x, z = #MUL(x, y);
+  r = t[z];
+  return r;
+}
