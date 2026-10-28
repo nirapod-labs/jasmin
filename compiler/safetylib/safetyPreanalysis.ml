@@ -389,6 +389,19 @@ end = struct
     match instr.i_desc with
     | Cassgn (lv, _, _, e) -> pa_lv st lv e
 
+    (* Misspeculation flags. In the source semantics [#protect(x, ms)] is
+       [x] (se_protect_sem in proofs/lang/sopn.v), so a protected value
+       depends on [x] alone, and the value of a flag decides no access: the
+       interpreter gives the results of [#init_msf], [#update_msf] and
+       [#mov_msf] no value ([split_opn]), and here they depend on nothing.
+       Without this, [ms = #update_msf(i < n, ms)] made the flag, and every
+       value protected with it, depend on the loop variables, and all of
+       them were kept in the relational domain. *)
+    | Copn ([lv], _, Sopn.Oslh (SLHprotect _ | SLHprotect_ptr _), x :: _) ->
+      pa_lv st lv x
+
+    | Copn (_, _, Sopn.Oslh (SLHinit | SLHupdate | SLHmove), _) -> st
+
     | Copn (lvs, _, _, es) | Csyscall(lvs, _, es) -> List.fold_left (fun st lv ->
         List.fold_left (fun st e -> pa_lv st lv e) st es) st lvs
 

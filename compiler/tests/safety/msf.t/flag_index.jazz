@@ -1,0 +1,13 @@
+/* In the source semantics the flag is 0 here and the read is in bounds,
+   but the checker gives a flag no value. */
+export fn flag_index(reg u64 x) -> reg u64
+{
+  stack u64[2] a;
+  reg u64 ms r;
+
+  a[0] = x;
+  a[1] = x;
+  ms = #init_msf();
+  r = a[ms];
+  return r;
+}
