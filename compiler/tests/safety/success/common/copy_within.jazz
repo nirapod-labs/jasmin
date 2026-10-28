@@ -1,0 +1,18 @@
+/* Copies within one array, both ways: bytes [0, 8) are written, moved to
+   [4, 12), then [4, 12) is moved back to [2, 10). Bytes [0, 12) are
+   initialized at the end. */
+export fn copy_within(reg u64 v) -> reg u64
+{
+  stack u8[16] x;
+  reg u64 r;
+  inline int i;
+
+  for i = 0 to 8 {
+    x[i] = (8u)v;
+  }
+  x[4 : 8] = x[0 : 8];
+  x[2 : 8] = x[4 : 8];
+  r = (64u)x[11];
+  r += (64u)x[0];
+  return r;
+}
