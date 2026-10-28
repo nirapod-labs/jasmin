@@ -273,6 +273,7 @@ module AbsNumCongr : AbsNumType = struct
   let assign_expr ?force:(force=false) t ves =
     let is_dropped (v,_) = match v with
       | Mlocal (AarraySlice _) -> true (* FIXME: add an option *)
+      | MinitPrefix _ -> true
       | v -> untracked_cell v in
     let ves, dropped = List.partition (fun x -> not (is_dropped x)) ves in
     let t = List.fold_left (assign_expr_one force) t ves in

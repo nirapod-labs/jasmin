@@ -1,0 +1,44 @@
+/* The shape of the library's __fill64_mem called from the export (copied
+   here, never included): complete a block from the pending offset, then
+   read the whole block at constant word offsets. No library source. */
+inline fn fill64(reg mut ptr u8[64] buf, reg u64 dst_ p_ n_) -> reg ptr u8[64]
+{
+  reg u64 dst p n end t;
+  reg bool more;
+
+  dst = dst_;
+  p = p_;
+  n = n_;
+  end = dst;
+  end += n;
+  while { more = dst < end; } (more) {
+    t = (64u)[:u8 p];
+    buf[dst] = (8u)t;
+    dst += 1;
+    p += 1;
+  }
+  return buf;
+}
+
+export fn probe_fill(reg u64 in n total) -> reg u64
+{
+  stack u8[64] buf;
+  reg u64 fill dst t r;
+
+  fill = total;
+  fill &= 63;
+  /* The pending bytes come from the context in the library; here they are
+     written first, so that the fill starts at a known prefix. */
+  dst = 0;
+  while (dst < fill) { buf[dst] = (8u)0; dst += 1; }
+  if (n > 64 - fill) { n = 64 - fill; }
+  buf = fill64(buf, fill, in, n);
+  dst = fill;
+  dst += n;
+  t = 0;
+  while (dst < 64) { buf[dst] = (8u)t; dst += 1; }
+  r = 0;
+  t = buf[:u64 0];
+  r ^= t;
+  return r;
+}

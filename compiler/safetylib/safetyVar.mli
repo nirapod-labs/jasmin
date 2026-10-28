@@ -27,6 +27,8 @@ type mvar =
   | MvarOffset of var
   | MNumInv of L.i_loc
   | MmemRange of mem_loc
+  | MinitPrefix of var * int (* The number of initialised bytes of an
+                                array from the byte base [c]. *)
 
 (*---------------------------------------------------------------*)
 val weak_update : mvar -> bool

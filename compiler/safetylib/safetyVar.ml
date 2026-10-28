@@ -32,6 +32,9 @@ type mvar =
   | MvarOffset of var           (* Local variable offset *)
   | MNumInv of L.i_loc          (* Numerical Invariants *)
   | MmemRange of mem_loc        (* Memory location range *)
+  | MinitPrefix of var * int    (* Initialised prefix of an array: the
+                                   number of initialised bytes of [x] from
+                                   the byte base [c]. *)
 
 (*---------------------------------------------------------------*)
 (* Must the variable [v] be handled as a weak variable. *)
@@ -57,6 +60,7 @@ let weak_update v =
   | MvarOffset gv ->  weak_update_kind gv.v_kind 
 
   | MmemRange _ -> true
+  | MinitPrefix _ -> false
   | WTemp _ -> true
 
 (*---------------------------------------------------------------*)
@@ -96,6 +100,7 @@ let string_of_mvar = function
   | MvarOffset s -> "o_" ^ s.v_name
   | MNumInv lt -> "ni_" ^ string_of_int (fst lt.base_loc.loc_start)
   | MmemRange loc -> "mem_" ^ string_of_mloc loc
+  | MinitPrefix (v, c) -> "g_" ^ v.v_name ^ "_" ^ string_of_int c
 
 let pp_mvar fmt v = Format.fprintf fmt "%s" (string_of_mvar v)
 
@@ -151,6 +156,7 @@ let ty_mvar = function
   | MvarOffset _ -> Bty Int
   | MNumInv _ -> Bty Int
   | MmemRange _ -> Bty Int
+  | MinitPrefix _ -> Bty Int
 
 (*---------------------------------------------------------------*)
 let of_scope scope at = match scope with

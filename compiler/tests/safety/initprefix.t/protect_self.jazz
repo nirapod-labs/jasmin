@@ -1,0 +1,14 @@
+/* A table filled by a loop, then passed through #protect_ptr to itself: the
+   copy must keep the prefix, so the read of t[0] passes. */
+export fn protect_self(reg u64 v) -> reg u64
+{
+  stack u64[2] t;
+  reg u64 ms i r;
+
+  i = 0;
+  while (i < 2) { t[i] = v; i += 1; }
+  ms = #init_msf();
+  t = #protect_ptr(t, ms);
+  r = t[0];
+  return r;
+}
