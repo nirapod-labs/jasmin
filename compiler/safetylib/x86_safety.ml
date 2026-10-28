@@ -229,10 +229,12 @@ module X86_safety
       let rflags = rflags_of_div in
       rflags @ [None; Some w]
 
-    (* div signed *)
+    (* div signed: IDIV rounds the quotient toward zero, which is the
+       signed integer quotient of the source ([Z.quot]), not the unsigned
+       one ([Z.div], toward minus infinity). *)
     | Arch_extra.BaseOp (None, X86_instr_decl.IDIV ws) ->
       let n, d = split_div Signed ws es in
-      let w = Papp1 (Oword_of_int ws, Papp2 (Odiv(Unsigned, Op_int), n, d)) in
+      let w = Papp1 (Oword_of_int ws, Papp2 (Odiv(Signed, Op_int), n, d)) in
       let rflags = rflags_of_div in
       rflags @ [None; Some w]
 

@@ -452,7 +452,8 @@ let safe_opn pd asmOp safe opn es =
            | Unsigned ->
              InRange(Pconst Z.zero, Papp2 (Osub Op_int, Papp2 (Omul Op_int, Pconst (modulus sz), d), Pconst Z.one), n)
           | Signed ->
-             InRange (Pconst (Z.neg (half_modulus sz)), Pconst (Z.pred (half_modulus sz)), Papp2 (Odiv(Unsigned, Op_int), n, d))
+             (* The quotient rounds toward zero, as in [sc_x86_division]. *)
+             InRange (Pconst (Z.neg (half_modulus sz)), Pconst (Z.pred (half_modulus sz)), Papp2 (Odiv(Signed, Op_int), n, d))
         ]
 
       (* [sc_not_zero ws k] *)

@@ -392,12 +392,8 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
       obind2 (fun x y -> Some (Z.mul x y))
         (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
 
-    | Papp2 (Odiv (Unsigned, Op_int), e1, e2) ->
-        obind2 (fun x y -> Some (Z.div x y))
-          (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
-
-    | Papp2 (Odiv (Signed, Op_int), e1, e2) ->
-        obind2 (fun x y -> Some (zint_div Signed x y))
+    | Papp2 (Odiv (sg, Op_int), e1, e2) ->
+        obind2 (fun x y -> Some (zint_div sg x y))
           (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
 
     (* With the remainder evaluated, an index such as [t % 2] with [t] the
@@ -537,6 +533,39 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
           Mtexpr.unop absop (linearize_iexpr abs e1)
 
         | None -> raise (Unop_not_supported op1) end
+
+    (* APRON divides integers rounding toward zero (round_typ), as Rocq's
+       [Z.quot] does, and leaves a division by 0 undefined. The signed
+       integer quotient of the source is [Z.quot]; it is passed to APRON
+       when the divisor cannot be 0. The unsigned quotient and remainder
+       round toward minus infinity ([aeval_cst_zint]), and the signed
+       remainder takes the sign of the dividend; all of them agree with
+       APRON's rounding when the dividend is non-negative and the divisor
+       positive, and only then are they passed to APRON. Otherwise the
+       value of the operation is unknown. *)
+    | Papp2 (op2, e1, e2)
+      when (match remove_Owi2 op2 with
+          | Odiv (_, Op_int) | Omod (_, Op_int) -> true
+          | _ -> false) ->
+      let lin1 = linearize_iexpr abs e1
+      and lin2 = linearize_iexpr abs e2 in
+      let within lin lo hi =
+        Interval.is_leq (AbsDom.bound_texpr abs lin) (Interval.of_scalar lo hi) in
+      let zero = Scalar.of_int 0 and one = Scalar.of_int 1
+      and minus_one = Scalar.of_int (-1)
+      and minus_inf = Scalar.of_infty (-1) and plus_inf = Scalar.of_infty 1 in
+      let positive lin = within lin one plus_inf in
+      let truncation_agrees () = within lin1 zero plus_inf && positive lin2 in
+      begin match remove_Owi2 op2 with
+        | Odiv (Signed, _)
+          when positive lin2 || within lin2 minus_inf minus_one ->
+          Mtexpr.binop Texpr1.Div lin1 lin2
+        | Odiv _ when truncation_agrees () ->
+          Mtexpr.binop Texpr1.Div lin1 lin2
+        | Omod _ when truncation_agrees () ->
+          Mtexpr.binop Texpr1.Mod lin1 lin2
+        | _ -> raise (Binop_not_supported op2)
+      end
 
     | Papp2 (op2, e1, e2) ->
       begin match op2_to_abs_binop (remove_Owi2 op2) with

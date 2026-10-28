@@ -1,0 +1,16 @@
+/* The unsigned integer quotient rounds toward minus infinity: at t = 0,
+   (t - 1) / 2 + 1 is 0, a cell that is never written. Rounding toward zero
+   would give 1, the written cell, and hide the uninitialized read. */
+export fn div_index_neg(reg u32 a) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 x;
+  inline int t;
+
+  m[1] = a;
+  x = 0;
+  for t = 0 to 1 {
+    x = m[(t - 1) / 2 + 1];
+  }
+  return x;
+}
