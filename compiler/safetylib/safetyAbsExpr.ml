@@ -1261,15 +1261,23 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     (* Numerical abstraction *)
     let a = AbsDom.assign_sexpr a None ves in
 
-    (* Initialization *)
-    List.fold_left (fun a (vi,eiv) ->
-        List.fold_left2 (fun a vi eiv -> match rhs.ms_sc with
-            | Expr.Slocal -> AbsDom.copy_init a vi eiv
-            | Expr.Sglob  -> AbsDom.is_init a (get_at vi))
-          a
+    (* Initialization, byte by byte. The bytes come in ascending order. When
+       the copy moves bytes up within one array, a byte would be read after
+       an earlier step wrote it, so they are copied in descending order. *)
+    let bytes = List.concat_map (fun (vi, eiv) ->
+        List.combine
           (u8_blast_var ~blast_arrays:true vi)
           (u8_blast_var ~blast_arrays:true eiv)
-      ) a vevs
+      ) vevs in
+    let bytes =
+      if rhs.ms_sc = Expr.Slocal && V.equal lgv rgv
+         && lhs.ms_offset > rhs.ms_offset
+      then List.rev bytes
+      else bytes in
+    List.fold_left (fun a (vi, eiv) -> match rhs.ms_sc with
+        | Expr.Slocal -> AbsDom.copy_init a vi eiv
+        | Expr.Sglob  -> AbsDom.is_init a (get_at vi))
+      a bytes
 
   (* The variables representing the contents of an array *)
   let array_contents lhs_arr =

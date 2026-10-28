@@ -346,6 +346,78 @@ Analyzing function call_index
 
 Program is not safe!
 
+File fail/common/copy_overlap.jazz (on arch x86-64):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch arm-m4):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch armv8a):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch riscv):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
 File fail/common/div_index_neg.jazz (on arch x86-64):
 Analyzing function div_index_neg
 
