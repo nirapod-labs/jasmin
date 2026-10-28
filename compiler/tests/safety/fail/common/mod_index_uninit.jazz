@@ -1,0 +1,17 @@
+/* As success/common/mod_index.jazz without the write of cell 1 before the
+   loop: at t = 0, m[(t + 1) % 2] reads cell 1, which is not written. */
+export fn mod_index_uninit(reg u32 a b) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 r x;
+  inline int t;
+
+  r = 0;
+  for t = 0 to 4 {
+    m[t % 2] = a ^ b;
+    x = m[t % 2];
+    x &= m[(t + 1) % 2];
+    r ^= x;
+  }
+  return r;
+}

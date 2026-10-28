@@ -1,0 +1,19 @@
+/* m[t % 2] alternates between the two cells. Cell 1 is written before the
+   loop and cell t % 2 before each read, so every read is of a written
+   cell. */
+export fn mod_index(reg u32 a b) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 r x;
+  inline int t;
+
+  r = 0;
+  m[1] = a;
+  for t = 0 to 4 {
+    m[t % 2] = a ^ b;
+    x = m[t % 2];
+    x &= m[(t + 1) % 2];
+    r ^= x;
+  }
+  return r;
+}
