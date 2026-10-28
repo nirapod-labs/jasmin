@@ -1,0 +1,15 @@
+/* The table is in memory: the lane pointer is a load. */
+export fn lanes_load(reg u64 t len) -> reg u64
+{
+  reg u64 p i b r;
+
+  p = [:u64 t + 8];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}

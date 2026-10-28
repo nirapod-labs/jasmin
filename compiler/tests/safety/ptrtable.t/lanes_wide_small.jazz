@@ -1,0 +1,17 @@
+/* One byte too many, with len below 2^61. */
+export fn lanes_wide_small(reg const ptr u64[1] in, reg u64 len) -> reg u64
+{
+  reg u64 p i b r;
+
+  r = 0;
+  if (len < 0x2000000000000000) {
+    p = in[0];
+    i = 0;
+    while (i <= len) {
+      b = (64u)[:u8 p + i];
+      r ^= b;
+      i += 1;
+    }
+  }
+  return r;
+}

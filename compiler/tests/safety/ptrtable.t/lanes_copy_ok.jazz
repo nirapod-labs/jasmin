@@ -1,0 +1,19 @@
+/* A copy of the table keeps its lanes: the read is lane 1. */
+export fn lanes_copy_ok(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 p i b r;
+  stack u64[2] cs;
+  reg ptr u64[2] c;
+
+  c = cs;
+  c = #copy(in);
+  p = c[1];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}

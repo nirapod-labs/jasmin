@@ -1,0 +1,18 @@
+/* One byte of cell 0 is overwritten before the read. */
+export fn lanes_written_byte(reg mut ptr u64[2] in, reg u64 len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+  reg u8 c;
+
+  c = 1;
+  in[:u8 3] = c;
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

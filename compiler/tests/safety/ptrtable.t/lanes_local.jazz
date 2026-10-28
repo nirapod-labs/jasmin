@@ -1,0 +1,18 @@
+/* A local table filled from two pointer arguments. */
+export fn lanes_local(reg u64 a a2 len) -> reg u64
+{
+  reg u64 p i b r;
+  stack u64[2] t;
+
+  t[0] = a;
+  t[1] = a2;
+  p = t[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}

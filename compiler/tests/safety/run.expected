@@ -7,6 +7,10 @@ Analyzing function main
   
 Memory ranges:
   mem_a: [0; 0]
+  mem_a.0: [0; 0]
+  mem_a.1: [0; 0]
+  mem_a.2: [0; 0]
+  mem_a.3: [0; 0]
   mem_i: [0; 0]
   
 * Rel:
@@ -81,6 +85,10 @@ Analyzing function main
   
 Memory ranges:
   mem_a: [0; 0]
+  mem_a.0: [0; 0]
+  mem_a.1: [0; 0]
+  mem_a.2: [0; 0]
+  mem_a.3: [0; 0]
   mem_i: [0; 0]
   
 * Rel:
@@ -1090,6 +1098,8 @@ Analyzing function f
   
 Memory ranges:
   mem_t: [0; 0]
+  mem_t.0: [0; 0]
+  mem_t.1: [0; 0]
   
 * Rel:
 {mem_t = 0}
@@ -1128,6 +1138,8 @@ Analyzing function f
   
 Memory ranges:
   mem_t: [0; 0]
+  mem_t.0: [0; 0]
+  mem_t.1: [0; 0]
   
 * Rel:
 {mem_t = 0}
@@ -1624,6 +1636,10 @@ Analyzing function main
   
 Memory ranges:
   mem_a: [0; 0]
+  mem_a.0: [0; 0]
+  mem_a.1: [0; 0]
+  mem_a.2: [0; 0]
+  mem_a.3: [0; 0]
   mem_i: [0; 0]
   
 * Rel:

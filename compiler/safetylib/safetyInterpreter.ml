@@ -106,7 +106,7 @@ type safe_cond =
   | InRange of expr * expr * expr (* InRange a b c ≡ c ∈ [a; b] *)
 
   | Valid       of wsize * expr (* allocated memory region *)
-  | BoundedRange of var (* bounded range of the accesses through an input pointer *)
+  | BoundedRange of mem_loc (* bounded range of the accesses to a region *)
   | AlignedPtr  of wsize * expr (* aligned pointer *)
   | AlignedExpr of wsize * expr (* aligned expression *)
 
@@ -165,8 +165,10 @@ let rec pp_safety_cond fmt = function
 
   | Valid (sz, e) ->
     Format.fprintf fmt "is_valid %a u%a" pp_expr e pp_ws sz
-  | BoundedRange x ->
+  | BoundedRange (MemLoc x) ->
     Format.fprintf fmt "bounded memory range of %a" pp_var x
+  | BoundedRange (MemCell (x, k)) ->
+    Format.fprintf fmt "bounded memory range of %a.%d" pp_var x k
 
   | AlignedPtr (sz, e) ->
     Format.fprintf fmt "aligned pointer %a u%a" pp_expr e pp_ws sz
@@ -240,6 +242,22 @@ type analyse_res =
     print_var_interval : (Format.formatter -> mvar -> unit);
     mem_ranges_printer : (Format.formatter -> unit -> unit);
     warnings : warnings; }
+
+(* The regions of an export: one per argument and, right after an array
+   argument of pointer-width cells ([is_table_arg]), one per cell: the region
+   that the cell's entry value points to ([MemCell]). A cell region has the
+   same name as any other dimension, [x.k], so the list must not repeat one:
+   an export argument is never renamed, and the name of an argument has no
+   '.', so a repetition would mean two distinct arguments with one name. *)
+let export_mem_locs pd f_args =
+  let mls = List.concat_map (fun x -> match x.v_ty with
+      | Arr (_, n) when is_table_arg pd x ->
+        MemLoc x :: List.init n (fun k -> MemCell (x, k))
+      | _ -> [ MemLoc x ]) f_args in
+  let names = List.map string_of_mloc mls in
+  if List.length (List.sort_uniq String.compare names) <> List.length names
+  then failwith "two memory regions have the same name";
+  mls
 
 module AbsMake (Arch : SafetyArch.SafetyArch) = struct
 
@@ -718,7 +736,7 @@ end = struct
 
   let init_state : (minfo, 'asm) func -> (minfo, 'asm) prog -> astate * warnings =
     fun main_decl (glob_decls, fun_decls) ->
-      let mem_locs = List.map (fun x -> MemLoc x) main_decl.f_args in
+      let mem_locs = export_mem_locs Arch.pointer_data main_decl.f_args in
       let env = init_env (glob_decls, fun_decls) mem_locs in
       let it = ItMap.empty in
 
@@ -1008,6 +1026,16 @@ end = struct
         AbsExpr.abs_assign abs in_ty mvar e )
         state.abs assigns in
 
+    (* The provenance of the parameters, from the arguments in the caller's
+       state, which is the state before the instruction. *)
+    let abs =
+      AbsExpr.update_prov state.abs abs
+        (if List.length f_decl.f_args = List.length es
+         then List.map2 (fun y e -> (Lvar (L.mk_loc L._dummy y), Some e))
+             f_decl.f_args es
+         else List.map (fun y -> (Lvar (L.mk_loc L._dummy y), None))
+             f_decl.f_args) in
+
     { state with abs = abs }
 
   (* Remark: handles variable initialization. *)
@@ -1136,6 +1164,9 @@ end = struct
     debug(fun () -> Format.eprintf "evaluating returned values ...@.");
     (* Finally, we assign the returned values in the corresponding lvalues *)
     let f_decl = get_fun_def fstate.prog fname |> oget in
+    (* The state before the results are written: the callee's binding of a
+       returned array is the one the caller's lvalue receives. *)
+    let snap = state.abs in
     let state = match lvs with
       | [] | [ _ ] ->
         let r_assgns = get_ret_assgns state.abs f_decl lvs in
@@ -1152,6 +1183,18 @@ end = struct
                 { f_decl with f_tyout = [ out_ty ]; f_ret = [ ret ] } [ lv ] in
             { state with abs = aeval_f_return state.abs r_assgn })
           state lvs (List.combine f_decl.f_tyout f_decl.f_ret) in
+
+    (* The provenance of the results, from the callee's return variables in
+       the state after the meet and before any result is written. A callee
+       that changes a returned array drops its binding itself. *)
+    let state =
+      { state with
+        abs = AbsExpr.update_prov snap state.abs
+            (if List.length lvs = List.length f_decl.f_ret
+             then List.map2 (fun lv r ->
+                 (lv, Some (Pvar { gv = r; gs = Expr.Slocal })))
+                 lvs f_decl.f_ret
+             else List.map (fun lv -> (lv, None)) lvs) } in
 
     debug(fun () ->
         Format.eprintf "forgetting %s local variables ...@.@." fname.fn_name);
@@ -1463,11 +1506,28 @@ end = struct
           | _ -> true
         ) f_decl.f_args in
 
+    (* The function must not use memory loads/stores, array accesses must be
+       fixed, arrays in arguments must be fully initialized, and arguments
+       must not point to memory nor hold a table: the analysis from top loses
+       the points-to facts and the provenance of arrays, so a callee that
+       forwards a table entry must be analysed directly to keep the entry's
+       region. A function already on the call stack keeps the previous
+       condition: a recursive callee re-entered on the direct path would not
+       terminate, and the loss of its arguments' regions only adds alarms. *)
+    (* [st] already carries the callee at the head of the stack (prepare_call
+       pushes it), so recursion is a second occurrence below the head. *)
+    let recursive = match st.cstack with
+      | _ :: rest -> List.mem f_decl.f_name rest
+      | [] -> false in
     let no_pointer =
       List.for_all (fun v ->
-          match AbsDom.var_points_to st.abs (mvar_of_scoped_var Expr.Slocal v) with
-          | Ptrs (_ :: _) -> false
-          | Ptrs [] | TopPtr -> true
+          (match v.v_ty with
+           | Arr _ when not recursive -> AbsDom.array_prov st.abs v = None
+           | _ -> true) &&
+          (match AbsDom.var_points_to st.abs
+                   (mvar_of_scoped_var Expr.Slocal v) with
+           | Ptrs (_ :: _) -> false
+           | Ptrs [] | TopPtr -> true)
         ) f_decl.f_args in
 
     cells_init && no_pointer && check_memory_access f_decl
@@ -1585,6 +1645,7 @@ end = struct
 
       | Cassgn (lv, _, _, Parr_init _) ->
         let abs = AbsExpr.abs_forget_array_contents state.abs ginstr.i_info lv in
+        let abs = AbsExpr.update_prov state.abs abs [ lv, None ] in
         { state with abs }
 
       | Copn ([ lv ], _, Opseudo_op (Ocopy _), [ e ])
@@ -1594,6 +1655,7 @@ end = struct
             (ty_lval lv)
             (AbsExpr.mvar_of_lvar state.abs ginstr.i_info lv)
             e in
+        let abs = AbsExpr.update_prov state.abs abs [ lv, Some e ] in
         { state with abs = abs; }
 
       | Copn (lvs,tag,opn,es) ->
@@ -1604,6 +1666,7 @@ end = struct
           let c2 = List.map (fun i_desc -> { ginstr with i_desc }) c2 in
           aeval_if ginstr b c1 c2 state
         | _ ->
+          let snap = state.abs in
           let assgns = split_opn (List.length lvs) opn es in
           let state = match lvs with
             | [ _ ] ->
@@ -1619,12 +1682,22 @@ end = struct
                 AbsExpr.abs_assign_opn ~check state.abs ginstr.i_info lvs assgns in
               { !st with abs } in
           let abs = List.fold_left AbsDom.meet_btcons state.abs (post_opn opn lvs es) in
+          (* The array provenance of the results, from the sources read in
+             [snap]. Every array an lvalue names loses its binding, whatever
+             path [abs_assign_opn] took for it (#swap, #protect_ptr, an
+             unknown result). *)
+          let abs = AbsExpr.update_prov snap abs (List.combine lvs assgns) in
 
           { state with abs = abs; }
         end
 
       | Csyscall(lvs, sc, es) ->
-         aeval_syscall state sc lvs es
+        let st = aeval_syscall state sc lvs es in
+        (* [#randombytes] changes the contents of its destination and goes
+           through neither [abs_assign] nor [forget]. *)
+        { st with
+          abs = AbsExpr.update_prov state.abs st.abs
+              (List.map (fun lv -> (lv, None)) lvs) }
 
       | Cassert _ -> state
 
@@ -2111,12 +2184,12 @@ end = struct
          analysis does not bound, or moved down. *)
       let space = Scalar.of_mpqf (mpq_pow (int_of_ws Arch.pointer_data)) in
       let final_st =
-        List.filter_map (fun (MemLoc x as m) ->
+        List.filter_map (fun m ->
             let itv = AbsDom.bound_variable final_st.abs (MmemRange m) in
             if Scalar.is_infty itv.inf = 0 && Scalar.is_infty itv.sup = 0
                && Scalar.cmp itv.sup space < 0
             then None
-            else Some (InReturn main_decl.f_name, BoundedRange x))
+            else Some (InReturn main_decl.f_name, BoundedRange m))
           final_st.env.m_locs
         |> add_violations final_st in
 
@@ -2199,8 +2272,12 @@ module AbsAnalyzer (Arch : SafetyArch.SafetyArch) (EW : ExportWrap with type ext
           | Not_found ->
             raise (Failure ("-safetyparam ill-formed (" ^ pt ^ " unknown)"))) in
 
+    (* The regions whose range is printed: the same list as in [init_state],
+       one per remaining argument and one per cell of a table argument. A
+       cell region is not named by -safetyparam, which names arguments. *)
     let npt = List.filter (fun x -> not (List.mem x pt_vars)) EW.main.f_args
-              |> List.map (fun x -> MmemRange (MemLoc x)) in
+              |> export_mem_locs Arch.pointer_data
+              |> List.map (fun m -> MmemRange m) in
 
     let l_res = List.map (fun p ->
         let module PW = struct

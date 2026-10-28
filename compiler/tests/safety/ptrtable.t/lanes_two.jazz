@@ -1,0 +1,26 @@
+/* Lane 0 is read for len bytes and lane 1 for 2 len bytes. */
+export fn lanes_two(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 p q m i b r;
+
+  r = 0;
+  if (len < 0x100000000) {
+    p = in[0];
+    i = 0;
+    while (i < len) {
+      b = (64u)[:u8 p + i];
+      r ^= b;
+      i += 1;
+    }
+    q = in[1];
+    m = len;
+    m += len;
+    i = 0;
+    while (i < m) {
+      b = (64u)[:u8 q + i];
+      r ^= b;
+      i += 1;
+    }
+  }
+  return r;
+}
