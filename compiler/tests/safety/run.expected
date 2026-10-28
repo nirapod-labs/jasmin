@@ -1080,6 +1080,82 @@ mem_x ∊ [0; 0]
 
 Program is not safe!
 
+File fail/common/sint_index.jazz (on arch x86-64):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/sint_index.jazz (on arch arm-m4):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/sint_index.jazz (on arch armv8a):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/sint_index.jazz (on arch riscv):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
 File fail/common/wint_overflow.jazz (on arch x86-64):
 Analyzing function wint_overflow
 

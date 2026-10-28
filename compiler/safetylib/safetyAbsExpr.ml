@@ -376,9 +376,20 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     | Papp1 (Oneg Op_int, e) ->
       Option.map Z.neg (aeval_cst_zint abs e)
 
-    | Papp1 (Oint_of_word _, e) ->
-      aeval_cst_zint abs e
-    (* No need to check for overflows because we do not allow word operations. *)
+    (* The operand is a word variable, whose constant [aeval_cst_var] gives
+       only when it lies in [0; 2^ws), the unsigned reading of the word; no
+       other word expression has a constant here. The signed reading
+       subtracts 2^ws when the sign bit is set. *)
+    | Papp1 (Oint_of_word (sg, ws), e) ->
+      let n = int_of_ws ws in
+      Option.map (fun c ->
+          match sg with
+          | Unsigned -> c
+          | Signed ->
+            if Z.geq c (Z.shift_left Z.one (n - 1))
+            then Z.sub c (Z.shift_left Z.one n)
+            else c)
+        (aeval_cst_zint abs e)
 
     | Papp2 (Oadd Op_int, e1, e2) ->
       obind2 (fun x y -> Some (Z.add x y))
