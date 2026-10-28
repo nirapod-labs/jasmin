@@ -1,0 +1,19 @@
+/* The first lvalue writes t at an unknown index i, 0 or 1. #swap(a, b)
+   returns (b, a), so when i is 0, t[0] becomes 5 and the index of the
+   second lvalue, read after that write, is out of bounds. */
+export fn swap_pending(reg u64 i) -> reg u64
+{
+  stack u64[2] t u;
+  reg u64 a b r;
+
+  t[0] = 0;
+  t[1] = 0;
+  u[0] = 0;
+  u[1] = 0;
+  i &= 1;
+  a = 0;
+  b = 5;
+  t[i], u[t[0]] = #swap(a, b);
+  r = u[1];
+  return r;
+}
