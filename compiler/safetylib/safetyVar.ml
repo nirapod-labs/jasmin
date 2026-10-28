@@ -183,9 +183,25 @@ let log_var = Hashtbl.create 16
    over. *)
 let avar_cache : (string, Var.t) Hashtbl.t = Hashtbl.create 4096
 
+(* Bases of the initialised-prefix ghosts, per array: recorded when a
+   ghost dimension is first created (base 0 at entry, a sub-array's byte
+   offset at a call or a copy), cleared with [reset]. *)
+let init_bases : (Prog.var, int list ref) Hashtbl.t = Hashtbl.create 16
+
+let note_base x c =
+  let l = match Hashtbl.find_opt init_bases x with
+    | Some l -> l
+    | None -> let l = ref [ 0 ] in Hashtbl.add init_bases x l; l in
+  if not (List.mem c !l) then l := c :: !l
+
+let bases_of_var x = match Hashtbl.find_opt init_bases x with
+  | Some l -> !l
+  | None -> [ 0 ]
+
 let reset () =
   Hashtbl.reset log_var;
-  Hashtbl.reset avar_cache
+  Hashtbl.reset avar_cache;
+  Hashtbl.reset init_bases
 
 let avar_of_mvar a =
   let s = string_of_mvar a in

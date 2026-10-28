@@ -1,0 +1,22 @@
+/* The multi-way fill shape: each 64-byte lane of a 128-byte buffer is
+   filled through a callee that receives the lane as a sub-array. */
+fn fill_lane(reg mut ptr u8[64] a, reg u64 v) -> reg ptr u8[64]
+{
+  reg u64 i;
+
+  i = 0;
+  while (i < 64) { a[i] = (8u)v; i += 1; }
+  return a;
+}
+
+export fn lane(reg u64 v) -> reg u64
+{
+  stack u8[128] buf;
+  reg u64 r;
+  inline int k;
+
+  for k = 0 to 2 { buf[64 * k : 64] = fill_lane(buf[64 * k : 64], v); }
+  r = (64u)buf[0];
+  r ^= (64u)buf[64];
+  return r;
+}

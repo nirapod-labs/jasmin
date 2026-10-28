@@ -63,3 +63,32 @@ A filled array passed through #protect_ptr to itself keeps its prefix.
 
   $ ../../../jasmin-checksafety --arch=armv8a protect_self.jazz 2>&1 | grep -o -e "line [0-9]*" -e "is_init .*" -e "No Safety Violation"
   No Safety Violation
+
+The multi-way fill shape: two 64-byte lanes of one buffer, each filled by a
+callee that receives the lane as a sub-array, then a read of each lane.
+
+  $ ../../../jasmin-checksafety --arch=armv8a lane.jazz 2>&1 | grep -o -e "line [0-9]*" -e "is_init .*" -e "No Safety Violation"
+  No Safety Violation
+
+A callee without memory access that only reads a written table, called in a
+loop under CallTopHeuristic, reuses its summary without crashing.
+
+  $ ../../../jasmin-checksafety --arch=armv8a --config=calltop.json calltop_reuse.jazz 2>&1 | grep -o -e "line [0-9]*" -e "is_init .*" -e "No Safety Violation"
+  No Safety Violation
+
+The same shape with a fill that writes only 32 of the 64 bytes: the read of
+byte 32 of a lane must alarm.
+
+  $ ../../../jasmin-checksafety --arch=armv8a lane_short.jazz 2>&1 | grep -o -e "line [0-9]*" -e "is_init .*" -e "No Safety Violation"
+  line 19
+  is_init buf[32]
+
+A full lane copied over the next one keeps both prefixes; with only 32 bytes
+written in lane 0, the copy leaves lane 1 uninitialised at byte 64.
+
+  $ ../../../jasmin-checksafety --arch=armv8a copy_lane.jazz 2>&1 | grep -o -e "line [0-9]*" -e "is_init .*" -e "No Safety Violation"
+  No Safety Violation
+
+  $ ../../../jasmin-checksafety --arch=armv8a copy_lane_short.jazz 2>&1 | grep -o -e "line [0-9]*" -e "is_init .*" -e "No Safety Violation"
+  line 11
+  is_init buf[64]
