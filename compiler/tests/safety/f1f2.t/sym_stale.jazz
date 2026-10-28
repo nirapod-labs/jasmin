@@ -1,0 +1,17 @@
+/* F2, as in the review: b is true, then t[0] changes; the branch is taken
+   in the source and u[5] is out of bounds. */
+export fn sym_stale() -> reg u64
+{
+  stack u64[1] t;
+  stack u64[2] u;
+  reg u64 i r;
+  reg bool b;
+  t[0] = 0;
+  u[0] = 0;
+  u[1] = 0;
+  b = t[0] == 0;
+  t[0] = 1;
+  r = 0;
+  if (b) { i = 5; r = u[i]; }
+  return r;
+}
