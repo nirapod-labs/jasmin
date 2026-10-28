@@ -5,6 +5,27 @@ copies are in the lab under f1f2/). These tests run on armv8a; their
 x86-64 twins are queued in RUNS-LATER.md, since the x86-64 host is
 offline and x86-64 checker runs are not made on the Mac in the meantime.
 
+#randombytes writes fresh bytes (syscall_sem.v): the old values of the
+cells it fills cannot be assumed. Here t[0] is 0 before the call and any
+byte after it, so i is 0 to 255 and the read of u[i] can be out of
+bounds.
+
+  $ ../../../jasmin-checksafety --arch=armv8a rb_stale.jazz 2>&1 | grep -o -e "line [0-9]*" -e "in_bound: .*" -e "is_init .*" -e "No Safety Violation"
+  line 13
+  in_bound: u[i] (length 16 U8)
+
+The same with eight bytes: any 64-bit value after the call, so the
+branch that sets i = 5 is reachable.
+
+  $ ../../../jasmin-checksafety --arch=armv8a rb_stale8.jazz 2>&1 | grep -o -e "line [0-9]*" -e "in_bound: .*" -e "is_init .*" -e "No Safety Violation"
+  line 15
+  in_bound: u[i] (length 16 U8)
+
+A byte the program chooses cannot make the read alarm.
+
+  $ ../../../jasmin-checksafety --arch=armv8a rb_bounded.jazz 2>&1 | grep -o -e "line [0-9]*" -e "in_bound: .*" -e "is_init .*" -e "No Safety Violation"
+  No Safety Violation
+
 A boolean set from an array cell keeps no fact about it after the cell is
 written: b is true, then t[0] becomes 1, the branch is taken in the source
 and u[5] is out of bounds.

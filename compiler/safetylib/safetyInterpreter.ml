@@ -1531,20 +1531,29 @@ end = struct
     match sc with
     | Syscall_t.RandomBytes (ws, len) ->
        let n = Type.arr_size ws len in
-       let cells = match lvs with
-         | [ Lnone _ ] -> []
-         | [ Lvar x ] -> cells_of_array x 0 n
+       (* The source fills the written bytes with fresh random values
+          (syscall_sem.v), so the old values of the cells written must be
+          forgotten before they are marked initialised. At an unknown
+          offset every cell of the array is forgotten and none is marked:
+          some sub-array was filled, which byte range is unknown. *)
+       let forgotten, cells = match lvs with
+         | [ Lnone _ ] -> [], []
+         | [ Lvar x ] ->
+           let c = cells_of_array x 0 n in c, c
          | [ Lasub(aa, ws, _len, x, ofs) ] ->
             begin match AbsExpr.aeval_cst_int state.abs ofs with
-            | Some j -> cells_of_array x (access_offset aa ws j) n
+            | Some j -> let c = cells_of_array x (access_offset aa ws j) n in c, c
             | None ->
                debug (fun () ->
                    Format.eprintf "Warning: cannot compute the offset of the destination of #randombytes@.");
-               []
+               AbsExpr.arr_full_range (L.unloc x), []
             end
          | _ -> assert false
        in
-       let abs = List.fold_left AbsDom.is_init state.abs cells in
+       let abs =
+         AbsDom.forget_list state.abs
+           (List.map (fun c -> Mlocal c) forgotten) in
+       let abs = List.fold_left AbsDom.is_init abs cells in
        { state with abs }
 
   let log = timestamp ()

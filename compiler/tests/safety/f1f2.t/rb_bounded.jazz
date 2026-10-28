@@ -1,0 +1,17 @@
+/* F1 control: the random byte is masked to 0 or 1, so the read is in
+   bounds whatever value it takes. Forgetting the old value must not turn
+   this into an alarm. */
+export fn rb_bounded() -> reg u64
+{
+  stack u8[1] t;
+  stack u64[2] u;
+  reg u64 i r;
+  t[0] = 0;
+  u[0] = 0;
+  u[1] = 0;
+  t = #randombytes(t);
+  i = (64u)t[0];
+  i &= 1;
+  r = u[i];
+  return r;
+}
