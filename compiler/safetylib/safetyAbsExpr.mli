@@ -83,6 +83,16 @@ module AbsExpr (Arch: SafetyArch.SafetyArch) (AbsDom : SafetyInterfaces.AbsNumBo
 
   val abs_assign : AbsDom.t -> ty -> mlvar -> expr -> AbsDom.t
 
+  (* [update_prov snap abs lv_srcs]: the provenance of the arrays after an
+     instruction that writes the lvalues of [lv_srcs], each paired with the
+     expression of the value it receives, read in [snap], the state before
+     the instruction, when the instruction gives one. Every array an lvalue
+     names loses its binding; a whole array written with a copy of an array
+     that has a binding in [snap] receives that binding; every other case
+     removes it. *)
+  val update_prov :
+    AbsDom.t -> AbsDom.t -> (lval * expr option) list -> AbsDom.t
+
   val abs_assign_opn :
     ?check:(AbsDom.t -> lval -> AbsDom.t) ->
     AbsDom.t -> minfo -> lval list -> expr option list -> AbsDom.t

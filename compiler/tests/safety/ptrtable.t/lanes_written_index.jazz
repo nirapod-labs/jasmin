@@ -1,0 +1,17 @@
+/* A cell at a run-time index is overwritten before the read. */
+export fn lanes_written_index(reg mut ptr u64[2] in, reg u64 j q len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+
+  j &= 1;
+  in[j] = q;
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

@@ -1,0 +1,23 @@
+/* A callee writes q into cell 0 and returns the table, which the caller
+   assigns back to in before the read. */
+fn clobber(reg mut ptr u64[2] t, reg u64 k) -> reg ptr u64[2]
+{
+  t[0] = k;
+  return t;
+}
+
+export fn lanes_returned(reg mut ptr u64[2] in, reg u64 q len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+
+  in = clobber(in, q);
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

@@ -1,0 +1,24 @@
+/* A callee without memory access returns the first lane pointer; the
+   caller reads through it. */
+fn entry0(reg const ptr u64[2] t) -> reg u64
+{
+  reg u64 p;
+
+  p = t[0];
+  return p;
+}
+
+export fn lanes_calltop(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 p i b r;
+
+  p = entry0(in);
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}

@@ -728,6 +728,13 @@ module AbsBoolNoRel (AbsNum : AbsNumT) (Pt : PointsTo) (Sym : SymExpr)
   let assign_ptr_expr t v pt_e =
     { t with points_to = Pt.assign_ptr_expr t.points_to v pt_e }
 
+  let assign_region t v m =
+    { t with points_to = Pt.assign_region t.points_to v m }
+
+  let array_prov t y = Pt.array_prov t.points_to y
+
+  let set_prov t y o = { t with points_to = Pt.set_prov t.points_to y o }
+
   (* [subst_btcons t c] returns an constraint [c'] equivalent to
      [c] in any state satisfying [t]. *)
   let subst_btcons t c = Sym.subst_btcons t.sym c
@@ -851,9 +858,13 @@ module AbsBoolNoRel (AbsNum : AbsNumT) (Pt : PointsTo) (Sym : SymExpr)
       if Mml.is_empty t.alignment then ()
       else begin
         Format.fprintf fmt "@[<hv 2>* Alignment:@;";
-        Mml.iter (fun (MemLoc v) wsize ->
+        let pp_mloc fmt = function
+          | MemLoc v -> Printer.pp_var ~debug:false fmt v
+          | MemCell (v, k) ->
+            Format.fprintf fmt "%a.%d" (Printer.pp_var ~debug:false) v k in
+        Mml.iter (fun m wsize ->
             Format.fprintf fmt "@[<h>%a %d;@]@;"
-              (Printer.pp_var ~debug:false) v (Prog.int_of_ws wsize);
+              pp_mloc m (Prog.int_of_ws wsize);
           ) t.alignment;
         Format.fprintf fmt "@]"
       end

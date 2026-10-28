@@ -5,7 +5,11 @@ open Wsize
 
 type v_scope = Expr.v_scope
                  
-type mem_loc = MemLoc of var
+(* A memory region that the program may access. [MemLoc x] is the region
+   that the export argument [x] points to. [MemCell (x, k)] is the region
+   that the pointer stored, at entry, in cell [k] of the export array
+   argument [x] points to; [x]'s cells have pointer width. *)
+type mem_loc = MemLoc of var | MemCell of var * int
 
 type slice = var * wsize * int
              
@@ -28,6 +32,14 @@ type mvar =
 val weak_update : mvar -> bool
 
 (*---------------------------------------------------------------*)
+(* An export array argument of pointer-width cells gets one region per
+   cell, at most [max_table_cells] of them; a larger one gets none. *)
+val max_table_cells : int
+val is_table_arg : wsize -> var -> bool
+
+(* The printed name of a region: the argument's name, or [x.k]. *)
+val string_of_mloc : mem_loc -> string
+
 val string_of_mvar : mvar -> string
   
 val pp_mvar : Format.formatter -> mvar -> unit

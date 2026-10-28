@@ -1,0 +1,27 @@
+/* The second call reads through c[0] = q. */
+fn read0(reg const ptr u64[1] t, reg u64 len) -> reg u64
+{
+  reg u64 vp i b r;
+
+  vp = t[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 vp + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}
+
+export fn lanes_twice(reg const ptr u64[1] in, reg u64 q len) -> reg u64
+{
+  stack u64[1] c;
+  reg u64 r s;
+
+  c[0] = q;
+  r = read0(in, len);
+  s = read0(c, len);
+  r ^= s;
+  return r;
+}
