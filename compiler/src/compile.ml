@@ -135,6 +135,54 @@ let do_toec
   Conv.prog_of_cuprog cp
 
 (*--------------------------------------------------------------------- *)
+(* The safety model: the safety conditions of the program as assertions
+   ([Safety.sc_prog]), with explicit initialisation masks for EasyCrypt
+   ([Safety_mask]). A function without a contract gets the default one: its
+   array parameters are initialised on entry and its array results on
+   exit. *)
+
+let default_contract (fd : (_, _) func) : int gfcontract =
+  let copy x = L.mk_loc L._dummy (V.mk x.v_name x.v_kind x.v_ty x.v_dloc x.v_annot) in
+  let init_of (x : var_i) =
+    match (L.unloc x).v_ty with
+    | Arr (ws, n) ->
+        let len = arr_size ws n in
+        [ ("safety",
+           PappN_safety (Operators.Ois_arr_init (Conv.cz_of_int len),
+                         [ Pvar (gkvar x); Pconst Z.zero; Pconst (Z.of_int len) ])) ]
+    | Bty _ -> []
+  in
+  let f_iparams = List.map copy fd.f_args in
+  let f_ires = List.map (fun x -> copy (L.unloc x)) fd.f_ret in
+  { f_iparams; f_ires;
+    f_pre = List.concat_map init_of f_iparams;
+    f_post = List.concat_map init_of f_ires }
+
+let add_default_contracts ((globs, funcs) : (_, _) prog) : (_, _) prog =
+  let add fd =
+    match fd.f_contract with
+    | Some _ -> fd
+    | None -> { fd with f_contract = Some (default_contract fd) }
+  in
+  (globs, List.map add funcs)
+
+let do_safety
+   (type reg regx xreg rflag cond asm_op extra_op)
+    (module Arch : Arch_full.Arch
+      with type reg = reg
+       and type regx = regx
+       and type xreg = xreg
+       and type rflag = rflag
+       and type cond = cond
+       and type asm_op = asm_op
+       and type extra_op = extra_op) prog =
+  let prog = add_default_contracts prog in
+  let cp = Conv.cuprog_of_prog prog in
+  let cp = Safety.sc_prog Arch.asmOp Arch.pointer_data Arch.msf_size cp in
+  let cp = catch_error cp in
+  Safety_mask.mask_prog (Conv.prog_of_cuprog cp)
+
+(*--------------------------------------------------------------------- *)
 
 let compile (type reg regx xreg rflag cond asm_op extra_op)
     (module Arch : Arch_full.Arch

@@ -194,6 +194,7 @@ type model =
   | ConstantTime
   | ConstantTimeGlobal
   | Normal
+  | SafetyAnnotations
 
 type callee_saved_strategy =
   | CSS_Tight

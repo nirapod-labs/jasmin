@@ -3,11 +3,18 @@ open Cmdliner
 open CommonCLI
 open Utils
 
-let extract_to_file prog arch pd msfsz asmOp model amodel global_options
-    fnames array_dir outfile =
-  let array_dir =
-    if array_dir = None then Option.map Filename.dirname outfile else array_dir
-  in
+(* The name of the EasyCrypt theory of the extracted model, from its file. *)
+let theory_name outfile =
+  match outfile with
+  | None -> ""
+  | Some f ->
+      let basename = Filename.basename f in
+      let basename =
+        try Filename.chop_extension basename with Invalid_argument _ -> basename
+      in
+      String.capitalize_ascii basename
+
+let format_to_file outfile action =
   let fmt, close =
     match outfile with
     | None -> (Format.std_formatter, fun () -> ())
@@ -16,34 +23,60 @@ let extract_to_file prog arch pd msfsz asmOp model amodel global_options
         let fmt = Format.formatter_of_out_channel out in
         (fmt, fun () -> close_out out)
   in
-  try
-    BatPervasives.finally
-      (fun () -> close ())
-      (fun () ->
-        ToEC.extract prog arch pd msfsz asmOp model amodel global_options
-          fnames array_dir fmt)
-      ()
+  try BatPervasives.finally (fun () -> close ()) (fun () -> action fmt) ()
   with e ->
     BatPervasives.ignore_exceptions
       (fun () -> Option.map Unix.unlink outfile)
       ();
     raise e
 
+(* In the safety model the extracted program and the file of its safety
+   lemmas are written separately: either one, or both when both files are
+   given. *)
+let extract_to_file prog arch pd msfsz asmOp model amodel global_options
+    fnames array_dir outfile prooffile =
+  let array_dir =
+    if array_dir = None then Option.map Filename.dirname outfile else array_dir
+  in
+  let extract () =
+    format_to_file outfile (fun fmt ->
+        ToEC.extract prog arch pd msfsz asmOp model amodel global_options
+          fnames array_dir fmt)
+  in
+  let extract_proof () =
+    format_to_file prooffile (fun fmt ->
+        ToEC.generate_safety_lemmas (theory_name outfile) prog arch pd msfsz
+          asmOp model amodel global_options fnames array_dir fmt)
+  in
+  match (model, outfile, prooffile) with
+  | SafetyAnnotations, None, Some _ -> extract_proof ()
+  | SafetyAnnotations, Some _, Some _ -> extract (); extract_proof ()
+  | _ -> extract ()
+
 let parse_and_extract arch call_conv idirs =
   let module A = (val CoreArchFactory.get_arch_module arch call_conv) in
-  let extract model amodel global_options functions array_dir output pass file =
-    let prog = parse_and_compile (module A) ~wi2i:true pass file idirs
-      |> Compile.do_toec (module A) in
+  let extract model amodel global_options functions array_dir output
+      output_proof pass file =
+    (* The safety conditions are stated on the program as written, then the
+       loops are put in the form the extraction expects. *)
+    let prog = parse_and_compile (module A) ~wi2i:true pass file idirs in
+    let prog =
+      if model = SafetyAnnotations then Compile.do_safety (module A) prog
+      else prog
+    in
+    let prog = Compile.do_toec (module A) prog in
     try
       extract_to_file prog arch A.reg_size A.msf_size A.asmOp model amodel
-        global_options functions array_dir output
+        global_options functions array_dir output output_proof
     with Annot.AnnotationError (loc, code) ->
       hierror ~loc:(Lone loc) ~kind:"annotation error" "%t" code
   in
-  fun model amodel global_options functions array_dir output pass file warn ->
+  fun model amodel global_options functions array_dir output output_proof pass
+      file warn ->
     if not warn then nowarning ();
     match
-      extract model amodel global_options functions array_dir output pass file
+      extract model amodel global_options functions array_dir output
+        output_proof pass file
     with
     | () -> ()
     | exception HiError e ->
@@ -52,7 +85,12 @@ let parse_and_extract arch call_conv idirs =
 
 let model =
   let alts =
-    [ ("normal", Normal); ("CT", ConstantTime); ("CTG", ConstantTimeGlobal) ]
+    [
+      ("normal", Normal);
+      ("CT", ConstantTime);
+      ("CTG", ConstantTimeGlobal);
+      ("safety", SafetyAnnotations);
+    ]
   in
   let doc =
     "Extraction model.
@@ -60,6 +98,8 @@ let model =
     $(b,CT): Functions additionally return timing-observable leakage for
     'cryptographic constant time' (if/while conditions, memory access
     addresses, array indices, for loop bounds).
+    $(b,safety): the safety conditions of the program as assertions, collected
+    in a trace that each function returns; see $(b,--output-proof).
     (Deprecated) $(b,CTG): Cryptographic constant time leakage is added to a
     global variable."
   in
@@ -167,6 +207,16 @@ let output =
     & opt (some string) None
     & info [ "o"; "output" ] ~docv:"OUTPUT FILE" ~doc)
 
+let output_proof =
+  let doc =
+    "With the safety model: the file of the safety lemmas, one per function \
+     from its contract, with proof skeletons."
+  in
+  Arg.(
+    value
+    & opt (some string) None
+    & info [ "output-proof" ] ~docv:"OUTPUT PROOF FILE" ~doc)
+
 let array_dir =
   let doc =
     "Directory for generation of easycrypt array theories. \
@@ -198,6 +248,6 @@ let () =
   Cmd.v info
     Term.(
       const parse_and_extract $ arch $ call_conv $ idirs $ model $ array_model
-      $ global_model $ functions $ array_dir $ output $ after_pass
+      $ global_model $ functions $ array_dir $ output $ output_proof $ after_pass
       $ file $ warn)
   |> Cmd.eval |> exit

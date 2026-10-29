@@ -46,3 +46,21 @@ val extract :
   string option ->
   Format.formatter ->
   unit
+
+(* The safety lemmas of the extracted functions, one [<f>_spec] per function
+   from its contract, and their proof skeletons, for the model extracted to the
+   theory named by the first argument (model [SafetyAnnotations]). *)
+val generate_safety_lemmas :
+  string ->
+  ('info, ('asm_op, 'extra_op) Arch_extra.extended_op_gen) Prog.prog ->
+  Architecture.architecture ->
+  Wsize.wsize ->
+  Wsize.wsize ->
+  ('asm_op, 'extra_op) Arch_extra.extended_op_gen Sopn.asmOp ->
+  Utils.model ->
+  amodel ->
+  global_options ->
+  string list ->
+  string option ->
+  Format.formatter ->
+  unit
