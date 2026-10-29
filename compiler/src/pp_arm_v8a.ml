@@ -62,10 +62,43 @@ let pp_reg_address addr =
 
 let pp_condt = hash_to_string string_of_condt
 
+(* A SIMD&FP register operand. The width paired with it in the instruction
+   description is the element size of its arrangement ([U8] for 16B, [U16]
+   for 8H, [U32] for 4S, [U64] for 2D), or [U128] for the Q name of the
+   register. *)
+let pp_vregister_name = hash_to_string vregister_to_string
+
+let pp_vregister (sz : Wsize.wsize) (r : vregister) =
+  let v = pp_vregister_name r in
+  let n = String.sub v 1 (String.length v - 1) in
+  match sz with
+  | Wsize.U8 -> v ^ ".16b"
+  | Wsize.U16 -> v ^ ".8h"
+  | Wsize.U32 -> v ^ ".4s"
+  | Wsize.U64 -> v ^ ".2d"
+  | Wsize.U128 -> "q" ^ n
+  | Wsize.U256 ->
+      hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+        "no 256-bit view of a SIMD&FP register"
+
+(* A vector element operand [Vn.Ts[index]], for the element size [sz]. *)
+let pp_velement (sz : Wsize.wsize) (r : vregister) index =
+  let ts =
+    match sz with
+    | Wsize.U8 -> "b"
+    | Wsize.U16 -> "h"
+    | Wsize.U32 -> "s"
+    | Wsize.U64 -> "d"
+    | _ ->
+        hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+          "no vector element of this size"
+  in
+  Format.asprintf "%s.%s[%s]" (pp_vregister_name r) ts (Z.to_string index)
+
 (* A64 has no conditional execution: a condition is always a proper operand
    (CSEL, CSET, ...), declared last in the argument list, so it is printed
    in place like any other operand. *)
-let pp_asm_arg ?(wform = false) (arg : (register, Arch_utils.empty, Arch_utils.empty, rflag, condt) asm_arg) =
+let pp_asm_arg ?(wform = false) ?(vsz = Wsize.U128) (arg : (register, Arch_utils.empty, vregister, rflag, condt) asm_arg) =
   match arg with
   | Condt ct -> pp_condt ct
   | Imm (ws, w) -> pp_imm (Conv.z_unsigned_of_word ws w)
@@ -80,19 +113,47 @@ let pp_asm_arg ?(wform = false) (arg : (register, Arch_utils.empty, Arch_utils.e
         ~internal:true
         "memory operand relative to the instruction pointer"
   | ImmRip _ -> assert false (* Only on the ARM M-profile. *)
-  | XReg _ -> .
+  | XReg r -> pp_vregister vsz r
 
 (* -------------------------------------------------------------------- *)
 
 (* An operand, as the instruction description requests it. *)
-let pp_arg (a : (register, Arch_utils.empty, Arch_utils.empty, rflag, condt) pp_arg) =
+let pp_arg (a : (register, Arch_utils.empty, vregister, rflag, condt) pp_arg) =
   match a with
-  | PPa_full (ws, a) -> Some (pp_asm_arg ~wform:(Wsize.size_8_32 ws) a)
+  | PPa_full (ws, a) -> Some (pp_asm_arg ~wform:(Wsize.size_8_32 ws) ~vsz:ws a)
   | PPa_shift (sk, Imm (ws, n)) ->
       let n = Conv.z_unsigned_of_word ws n in
       if Z.equal n Z.zero then None
       else Some (Format.asprintf "%s %s" sk (pp_imm n))
   | PPa_shift _ -> assert false
+
+(* The operands of an instruction, as its description requests them
+   ([pp_arg]). The element operands listed by [velem_operands]
+   (armv8a_instr_decl.v) fold a vector register and an immediate index into
+   [Vn.Ts[index]]; the index is not printed on its own. *)
+let pp_asm_args mn (args : (register, Arch_utils.empty, vregister, rflag, condt) pp_arg list) =
+  let elems =
+    List.map (fun (r, i) -> (Conv.int_of_nat r, Conv.int_of_nat i)) (velem_operands mn)
+  in
+  let index i =
+    match List.nth_opt args i with
+    | Some (PPa_full (_, Imm (ws, w))) -> Conv.z_unsigned_of_word ws w
+    | _ ->
+        hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+          "vector element index is not an immediate"
+  in
+  List.concat
+    (List.mapi
+       (fun k a ->
+         if List.exists (fun (_, i) -> i = k) elems then []
+         else
+           match List.assoc_opt k elems, a with
+           | None, _ -> Option.map_default (fun s -> [ s ]) [] (pp_arg a)
+           | Some i, PPa_full (sz, XReg r) -> [ pp_velement sz r (index i) ]
+           | Some _, _ ->
+               hierror ~loc:Lnone ~kind:"assembly printing" ~internal:true
+                 "vector element of a non-vector register")
+       args)
 
 let pp_mnemonic (ARMv8A_op (mn, _) as op) =
   let id = instr_desc Armv8a_decl.armv8a_decl Armv8a_instr_decl.armv8a_op_decl (None, op) in
@@ -110,7 +171,7 @@ let pp_ADR dst addr =
 module Armv8aTarget : AsmTargetBuilder.AsmTarget with
   type reg = Armv8a_decl.register
   and type regx = Arch_utils.empty
-  and type xreg = Arch_utils.empty
+  and type xreg = Armv8a_decl.vregister
   and type rflag = Arm_common.rflag
   and type cond = Arm_common.condt
   and type asm_op = armv8a_asm_op
@@ -118,7 +179,7 @@ module Armv8aTarget : AsmTargetBuilder.AsmTarget with
 
   type reg = Armv8a_decl.register
   type regx = Arch_utils.empty
-  type xreg = Arch_utils.empty
+  type xreg = Armv8a_decl.vregister
   type rflag = Arm_common.rflag
   type cond = Arm_common.condt
   type asm_op = armv8a_asm_op
@@ -203,7 +264,8 @@ module Armv8aTarget : AsmTargetBuilder.AsmTarget with
         | ARMv8A_op (ADR, _), [ dst; Addr (Arip r) ] ->
             pp_ADR (pp_asm_arg dst) (pp_rip_address r)
         | _, _ ->
-            [ Instr (pp_mnemonic op, List.filter_map pp_arg pp.pp_aop_args) ]
+            let (ARMv8A_op (mn, _)) = op in
+            [ Instr (pp_mnemonic op, pp_asm_args mn pp.pp_aop_args) ]
 
 end
 
