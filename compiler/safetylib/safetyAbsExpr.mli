@@ -54,6 +54,22 @@ module AbsExpr (Arch: SafetyArch.SafetyArch) (AbsDom : SafetyInterfaces.AbsNumBo
   (* The byte cells of an array, [AarraySlice (x, U8, 0)] to the last. *)
   val arr_full_range : var -> atype list
 
+  (* Initialised prefixes (P3): [ghost_of x] is the dimension [g(x, 0)],
+     the number of initialised bytes of [x] from offset 0.
+     [ghost_declare_full] assigns it the array's size, [ghost_clear]
+     assigns 0, [ghost_copy] assigns [min (g(y, 0), size x)] by the three
+     provable cases, and [ghost_bind] binds a parameter from an argument
+     expression. *)
+  val ghost_of : ?base:int -> var -> mvar
+  val ghosts_of : var -> mvar list
+  val ghost_declare_full : AbsDom.t -> var -> AbsDom.t
+  val ghost_clear : AbsDom.t -> var -> AbsDom.t
+  val ghost_copy : ?pre:AbsDom.t -> AbsDom.t -> var -> var -> AbsDom.t
+  val ghost_bind : AbsDom.t -> var -> expr -> AbsDom.t
+  val ghost_write : AbsDom.t -> var -> Mtexpr.t option -> int -> AbsDom.t
+  val ghost_covers : AbsDom.t -> var -> int -> int -> bool
+  val ghost_offset : AbsDom.t -> expr -> Mtexpr.t option
+
   val abs_sub_arr_range :
     AbsDom.t -> (var * Expr.v_scope) ->
     Warray_.arr_access -> wsize -> int -> expr ->

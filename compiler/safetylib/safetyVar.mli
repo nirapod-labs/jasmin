@@ -27,6 +27,8 @@ type mvar =
   | MvarOffset of var
   | MNumInv of L.i_loc
   | MmemRange of mem_loc
+  | MinitPrefix of var * int (* The number of initialised bytes of an
+                                array from the byte base [c]. *)
 
 (*---------------------------------------------------------------*)
 val weak_update : mvar -> bool
@@ -71,6 +73,10 @@ val get_at    : mvar -> atype
 (** Resets the conversion table between [mvar] and [avar]. To
   be called between two analyses. *)
 val reset : unit -> unit
+
+(* The byte bases of the initialised-prefix ghosts of an array. *)
+val note_base  : var -> int -> unit
+val bases_of_var : var -> int list
 
 (*---------------------------------------------------------------*)
 val avar_of_mvar : mvar -> Apron.Var.t

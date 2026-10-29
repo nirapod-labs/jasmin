@@ -457,6 +457,133 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
       (max 0 (arr_range x * size_of_ws (arr_size x)))
       (fun i -> AarraySlice (x, U8, i))
 
+  (*---------------------------------------------------------------*)
+  (* Initialised prefixes (P3). [MinitPrefix (x, 0)] is the number of
+     initialised bytes of the local array [x] counted from offset 0; patch
+     (a) uses that base only, sub-array bases are patch (b). The ghost is
+     an ordinary numerical dimension, so joins, widening, meets and
+     forgets are sound for it. *)
+
+  let ghost_of ?(base = 0) x = MinitPrefix (x, base)
+
+  let ghosts_of x =
+    List.map (fun c -> MinitPrefix (x, c)) (bases_of_var x)
+
+  let ghost_size x = arr_range x * size_of_ws (arr_size x)
+
+  (* [provable_ge abs e]: [e >= 0] holds in every state of [abs], proved
+     from the bound of [e] (an absent dimension has an unbounded bound, so
+     the test is false). *)
+  let provable_ge abs e =
+    Scalar.cmp_int (AbsDom.bound_texpr abs e).inf 0 >= 0
+
+  (* [ghost_declare ?base abs x n]: [g(x, base) := n], one unconditional
+     assignment applied to every component. The base is recorded so that
+     later removals and copies see it. *)
+  let ghost_declare ?(base = 0) abs x n =
+    note_base x base;
+    let g = ghost_of ~base x in
+    let e = sexpr_from_simple_expr (Mtexpr.cst (Coeff.s_of_int n)) in
+    AbsDom.assign_sexpr abs None [ g, e ]
+
+  let ghost_declare_full abs x = ghost_declare abs x (ghost_size x)
+
+  (* [ghost_clear abs x]: every known prefix of [x] goes to 0. *)
+  let ghost_clear abs x =
+    List.fold_left (fun abs c -> ghost_declare ~base:c abs x 0)
+      abs (bases_of_var x)
+
+  (* [ghost_copy ?pre abs x y]: for every base c of [y], [g(x, c) :=
+     min (g(y, c), size x - c)] by three provable cases read from [pre]; a
+     base of [x] that [y] does not have goes to 0. *)
+  let ghost_copy ?pre abs x y =
+    let pre = Option.default abs pre in
+    let sx = ghost_size x in
+    let bases_y = bases_of_var y in
+    let bases_x = bases_of_var x in
+    let abs =
+      List.fold_left (fun abs c ->
+          let gy = ghost_of ~base:c y in
+          let gx = ghost_of ~base:c x in
+          if c < 0 || c > sx then ghost_declare ~base:c abs x 0
+          else
+            let room = sx - c in
+            let gv = Mtexpr.var gy in
+            let ge = Mtexpr.binop Texpr1.Sub gv (Mtexpr.cst (Coeff.s_of_int room)) in
+            let le = Mtexpr.binop Texpr1.Sub (Mtexpr.cst (Coeff.s_of_int room)) gv in
+            if provable_ge pre ge then ghost_declare ~base:c abs x room
+            else if provable_ge pre le then begin
+              note_base x c;
+              AbsDom.assign_sexpr abs None [ gx, sexpr_from_simple_expr gv ]
+            end
+            else ghost_declare ~base:c abs x 0)
+        abs bases_y in
+    List.fold_left (fun abs c ->
+        if List.mem c bases_y then abs
+        else ghost_declare ~base:c abs x 0)
+      abs bases_x
+
+  (* T1: an element write of [w] bytes at byte offset [o] extends the
+     prefix of [x] from base 0 exactly when the written range starts at or
+     before the end of the initialised prefix; the choice is one
+     unconditional assignment on the full state. An offset the analysis
+     cannot linearise is fail closed: the ghost is forgotten. *)
+  let ghost_write abs x o w =
+    let g = ghost_of x in
+    note_base x 0;
+    match o with
+    | None -> AbsDom.forget_list abs [ g ]
+    | Some o ->
+      let ge = Mtexpr.binop Texpr1.Sub (Mtexpr.var g) o in
+      if provable_ge abs o && provable_ge abs ge then
+        let e = Mtexpr.binop Texpr1.Add o (Mtexpr.cst (Coeff.s_of_int w)) in
+        AbsDom.assign_sexpr abs None [ g, sexpr_from_simple_expr e ]
+      else abs
+
+  (* T2: [ghost_covers abs x o l] holds when the prefix of [x] proves that
+     every byte of [o, o + l) is initialised. *)
+  let ghost_covers abs x o len =
+    o >= 0 && o + len <= ghost_size x && o + len >= 0 &&
+    List.exists (fun c ->
+        if c < 0 || c > o then false
+        else
+          let g = ghost_of ~base:c x in
+          let e = Mtexpr.binop Texpr1.Sub (Mtexpr.var g)
+              (Mtexpr.cst (Coeff.s_of_int (o + len - c))) in
+          provable_ge abs e)
+      (bases_of_var x)
+
+  (* [ghost_bind abs x e]: a parameter [x] bound to the argument [e]. A
+     copy of an array keeps its prefix (clamped to the parameter's size);
+     any other expression gives 0. *)
+  let ghost_bind abs x e = match e with
+    | Pvar z when z.gs = Expr.Slocal ->
+      begin match (L.unloc z.gv).v_ty with
+        | Arr _ -> ghost_copy abs x (L.unloc z.gv)
+        | Bty _ -> ghost_clear abs x
+      end
+    | Psub (aa, ws, _, z, ei) when z.gs = Expr.Slocal ->
+      begin match (L.unloc z.gv).v_ty, aeval_cst_int abs ei with
+        | Arr _, Some i ->
+          let y = L.unloc z.gv in
+          let o = access_offset aa ws i in
+          let pre = abs in
+          let () = if o <> 0 then note_base y o in
+          let sz = ghost_size x in
+          let gy = ghost_of ~base:o y in
+          let gv = Mtexpr.var gy in
+          let ge = Mtexpr.binop Texpr1.Sub gv (Mtexpr.cst (Coeff.s_of_int sz)) in
+          let le = Mtexpr.binop Texpr1.Sub (Mtexpr.cst (Coeff.s_of_int sz)) gv in
+          if o < 0 then ghost_clear abs x
+          else if provable_ge pre ge then ghost_declare abs x sz
+          else if provable_ge pre le then
+            AbsDom.assign_sexpr abs None
+              [ ghost_of x, sexpr_from_simple_expr gv ]
+          else ghost_clear abs x
+        | _ -> ghost_clear abs x
+      end
+    | _ -> ghost_clear abs x
+
   (* let abs_arr_range_at abs x acc ws ei = match aeval_cst_int abs ei with
    *   | Some i ->
    *     [AarraySlice (x, ws, access_offset acc ws i)]
@@ -1287,10 +1414,31 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
   let slice_contents x ws n =
     List.init (size_of_ws ws) (fun i -> Mlocal (AarraySlice (x, U8, n + i)))
 
+  (* The byte offset expression of an index, linearised with the
+     lineariser its type needs (an integer index or a word index). *)
+  let ghost_offset pre e =
+    match ty_expr e with
+    | Bty Int -> linearize_smpl_iexpr pre e
+    | _ -> linearize_smpl_wexpr pre e
+
+  (* [lower_init ?rule abs x change]: [change] is the only kind of step in
+     this module that may make a cell of an array uninitialised (a removal
+     of cells, a copy of their initialisation). The ghosts of [x] that
+     [rule] chooses on the pre-state are set to 0 after it, in one batch,
+     through the components: 0 satisfies the invariant of every prefix.
+     The default rule clears them all, which is always sound. *)
+  let lower_init ?(rule = fun _ x -> ghosts_of x) abs x change =
+    let ghosts = rule abs x in
+    let abs = change abs in
+    let e = sexpr_from_simple_expr (Mtexpr.cst (Coeff.s_of_int 0)) in
+    AbsDom.assign_sexpr abs None (List.map (fun g -> (g, e)) ghosts)
+
   let remove_array_contents_mv abs =
     function
-    | Mlocal (Aarray x) -> array_contents x |> AbsDom.remove_vars abs
-    | Mlocal (AarraySlice (x, ws, n)) -> slice_contents x ws n |> AbsDom.remove_vars abs
+    | Mlocal (Aarray x) ->
+      lower_init abs x (fun abs -> array_contents x |> AbsDom.remove_vars abs)
+    | Mlocal (AarraySlice (x, ws, n)) ->
+      lower_init abs x (fun abs -> slice_contents x ws n |> AbsDom.remove_vars abs)
     | _ -> assert false
 
   let abs_forget_array_contents abs mi lv =
@@ -1315,6 +1463,11 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
         | Some off -> slice_cells ms.ms_v off (ms.ms_len * size_of_ws ms.ms_ws)
         | None -> arr_full_range ms.ms_v in
       List.for_all (AbsDom.check_init abs) cells
+      (* T2 on the copy's source: a prefix that covers the slice. *)
+      || (match ms.ms_offset with
+          | Some off ->
+            ghost_covers abs ms.ms_v off (ms.ms_len * size_of_ws ms.ms_ws)
+          | None -> false)
 
   (* Array slice assignment. Does the numerical assignments.
      Remark: array elements do not need to be tracked in the point-to
@@ -1322,24 +1475,77 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
   let assign_slice abs lhs rhs =
     match lhs.ms_offset, rhs.ms_offset with
     | Some loff, Some roff ->
+      let source_init = slice_init abs { rhs with ms_offset = Some roff } in
       let lhs = { lhs with ms_offset = loff }
       and rhs = { rhs with ms_offset = roff } in
-      assign_slice_aux abs lhs rhs
+      let whole =
+        loff = 0 && roff = 0
+        && lhs.ms_len = arr_range lhs.ms_v
+        && rhs.ms_len = arr_range rhs.ms_v
+        && lhs.ms_ws = arr_size lhs.ms_v
+        && rhs.ms_ws = arr_size rhs.ms_v in
+      if whole then
+        (* A whole-array copy copies the cells and their initialisation
+           through lower_init, then T4 sets the target's prefix to the
+           source's, clamped. *)
+        let pre = abs in
+        let abs = lower_init abs lhs.ms_v (fun abs -> assign_slice_aux abs lhs rhs) in
+        ghost_copy ~pre abs lhs.ms_v rhs.ms_v
+      else
+        (* T3: a slice copy may lower the bases that overlap its target.
+           Each such base is cut to min (g, loff - c) by three provable
+           cases; a base beyond the copy is untouched. The copied bytes
+           then raise the base at [loff] to the source's prefix when the
+           source slice is proved initialised. *)
+        let len = lhs.ms_len * size_of_ws lhs.ms_ws in
+        let cut abs = function
+          | c when c >= loff + len || c < 0 -> abs
+          | c when c >= loff -> ghost_declare ~base:c abs lhs.ms_v 0
+          | c ->
+            let g = ghost_of ~base:c lhs.ms_v in
+            let room = loff - c in
+            let ge = Mtexpr.binop Texpr1.Sub (Mtexpr.var g)
+                (Mtexpr.cst (Coeff.s_of_int room)) in
+            let le = Mtexpr.binop Texpr1.Sub (Mtexpr.cst (Coeff.s_of_int room))
+                (Mtexpr.var g) in
+            if provable_ge abs le then abs
+            else if provable_ge abs ge then ghost_declare ~base:c abs lhs.ms_v room
+            else ghost_declare ~base:c abs lhs.ms_v 0 in
+        let bases_x = bases_of_var lhs.ms_v in
+        let pre = abs in
+        let abs = List.fold_left cut abs bases_x in
+        let abs = assign_slice_aux abs lhs rhs in
+        if source_init then begin
+          let gy = ghost_of ~base:roff rhs.ms_v in
+          let gx = ghost_of ~base:loff lhs.ms_v in
+          note_base lhs.ms_v loff;
+          note_base rhs.ms_v roff;
+          let gv = Mtexpr.var gy in
+          let ge = Mtexpr.binop Texpr1.Sub gv (Mtexpr.cst (Coeff.s_of_int len)) in
+          let le = Mtexpr.binop Texpr1.Sub (Mtexpr.cst (Coeff.s_of_int len)) gv in
+          if provable_ge pre ge then ghost_declare ~base:loff abs lhs.ms_v len
+          else if provable_ge pre le then
+            AbsDom.assign_sexpr abs None [ gx, sexpr_from_simple_expr gv ]
+          else ghost_declare ~base:loff abs lhs.ms_v 0
+        end
+        else ghost_declare ~base:loff abs lhs.ms_v 0
 
     (* If any offset is unknown, we need to forget the array content.
        Moreover, if the copied cells may be uninitialized, so may be the
        cells that are written. If the written cells are known and all the
        cells that may be copied are initialized, the written cells are. *)
     | Some loff, None ->
-      let abs = array_contents lhs.ms_v |> AbsDom.forget_list abs in
-      let cells = slice_cells lhs.ms_v loff (lhs.ms_len * size_of_ws lhs.ms_ws) in
-      if slice_init abs rhs then List.fold_left AbsDom.is_init abs cells
-      else List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs
+      lower_init abs lhs.ms_v (fun abs ->
+          let abs = array_contents lhs.ms_v |> AbsDom.forget_list abs in
+          let cells = slice_cells lhs.ms_v loff (lhs.ms_len * size_of_ws lhs.ms_ws) in
+          if slice_init abs rhs then List.fold_left AbsDom.is_init abs cells
+          else List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs)
 
     | None, _ ->
-      if slice_init abs rhs
-      then array_contents lhs.ms_v |> AbsDom.forget_list abs
-      else array_contents lhs.ms_v |> AbsDom.remove_vars abs
+      lower_init abs lhs.ms_v (fun abs ->
+          if slice_init abs rhs
+          then array_contents lhs.ms_v |> AbsDom.forget_list abs
+          else array_contents lhs.ms_v |> AbsDom.remove_vars abs)
 
   let init_slice abs lhs es =
     match lhs.ms_offset with
@@ -1635,7 +1841,8 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
               | Some off ->
                 slice_cells ms.ms_v off (ms.ms_len * size_of_ws ms.ms_ws)
               | None -> arr_full_range ms.ms_v in
-            (List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs,
+            (lower_init abs ms.ms_v (fun abs ->
+                 List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs),
              pending, pending_vs, add written)
 
           (* An unknown scalar result. *)

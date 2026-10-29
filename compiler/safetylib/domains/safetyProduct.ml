@@ -574,6 +574,11 @@ module PIMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extended_o
     | MmemRange (MemCell (v, _)) ->
       if Sv.mem v v_pt then Ppl 0 else Nrd 0
 
+    (* An initialised prefix is packed with the loop counters of the writes
+       to its array, so it is relational unconditionally. The packing only
+       chooses a sound component. *)
+    | MinitPrefix _ -> Ppl 0
+
     | Mglobal _
     | Mlocal (AarraySlice _)
     | Mlocal (Aarray _) -> Nrd 0
@@ -787,6 +792,8 @@ module PIDynMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extende
     (* As in the static packing: a cell region follows its array. *)
     | MmemRange (MemCell (v, _)) ->
       if Sv.mem v pt_ini then Ppl 0 else Nrd 0
+
+    | MinitPrefix _ -> Ppl 0
 
     | Mglobal _
     | Mlocal (AarraySlice _)
