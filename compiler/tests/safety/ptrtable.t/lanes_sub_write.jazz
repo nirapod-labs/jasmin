@@ -1,0 +1,18 @@
+/* Cell 0 is overwritten by a sub-array copy. */
+export fn lanes_sub_write(reg mut ptr u64[2] in, reg u64 q len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+  stack u64[1] t;
+
+  t[0] = q;
+  in[0 : 1] = t;
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

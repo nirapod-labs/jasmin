@@ -1,0 +1,16 @@
+/* The first iteration reads through the entry pointer, the next ones
+   through q, written into cell 0 by the first. */
+export fn lanes_loop_overwrite(reg mut ptr u64[1] in, reg u64 q n) -> reg u64, reg ptr u64[1]
+{
+  reg u64 p b r;
+
+  r = 0;
+  while (n != 0) {
+    p = in[0];
+    b = (64u)[:u8 p];
+    r ^= b;
+    in[0] = q;
+    n -= 1;
+  }
+  return r, in;
+}

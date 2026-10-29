@@ -1,0 +1,18 @@
+/* Cell 0 is overwritten on one path. */
+export fn lanes_join(reg mut ptr u64[2] in, reg u64 c q len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+
+  if (c != 0) {
+    in[0] = q;
+  }
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

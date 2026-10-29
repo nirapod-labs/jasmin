@@ -1,0 +1,23 @@
+/* A callee receives the second cell of the table as a table of one. */
+fn first(reg const ptr u64[1] t, reg u64 len) -> reg u64
+{
+  reg u64 p i b r;
+
+  p = t[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}
+
+export fn lanes_sub(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 er;
+
+  er = first(in[1 : 1], len);
+  return er;
+}

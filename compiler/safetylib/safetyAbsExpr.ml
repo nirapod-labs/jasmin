@@ -1411,6 +1411,37 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
       end
     | _ -> None
 
+  (* The size of an array, in bytes. *)
+  let arr_bytes v = arr_range v * size_of_ws (arr_size v)
+
+  (* The region of a pointer read from a table. [table_cell abs out_ty e] is
+     [Some (MemCell (x, k))] when [e] reads, at pointer width into a
+     pointer-width destination, one cell of a local array [y] at a byte
+     offset [b] that is constant in [abs], [y] has the provenance
+     [(x, c)] in [abs], and [c + b] is a multiple of the pointer size with
+     [c + b + size] at most the size of [x] in bytes. The value read is then,
+     in every concrete state, the entry value of cell [k = (c + b) / size] of
+     [x], which is the base of [MemCell (x, k)]. Any other expression gives
+     [None]: no cast, no arithmetic around the read, no narrower width and no
+     unaligned read. The checks are in bytes, so that no division of a
+     negative offset is taken. *)
+  let table_cell abs (out_ty : 'a gty) e =
+    let pd = Arch.pointer_data in
+    match out_ty, e with
+    | Bty (U ws_o), Pget (_, aa, ws, y, ei)
+      when ws_o = pd && ws = pd && y.gs = Expr.Slocal ->
+      begin match AbsDom.array_prov abs (L.unloc y.gv),
+                  aeval_cst_int abs ei with
+      | Some (x, c), Some i ->
+        let sz = size_of_ws pd in
+        let o = c + access_offset aa ws i in
+        if 0 <= o && o + sz <= arr_bytes x && o mod sz = 0
+        then Some (MemCell (x, o / sz))
+        else None
+      | _ -> None
+      end
+    | _ -> None
+
   (* Abstract evaluation of an assignment.
      Also handles variable initialization. *)
   (* FIXME: allow batched assignments *)
@@ -1452,14 +1483,29 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
            points to [r] alone. Any other expression points to every region
            its variables point to. A memory access uses a pointer only when
            it points to one region, so the union carried nothing an access
-           could use. *)
-        let ptr_expr = match offset_base abs0 out_ty mvar e with
-          | Some y -> PtVars [mvar_of_var y]
-          | None -> ptr_expr_of_expr abs0 e in
-        let abs = AbsDom.assign_ptr_expr abs mvar ptr_expr in
+           could use. A pointer read from a cell of a table is the case of
+           [table_cell]: it points to the region of that cell's entry value
+           alone, at offset 0. *)
+        let cell = match ty_gvar_of_mvar mvar with
+          | Some _ -> table_cell abs0 out_ty e
+          | None -> None in
+        let abs = match cell with
+          | Some m -> AbsDom.assign_region abs mvar m
+          | None ->
+            let ptr_expr = match offset_base abs0 out_ty mvar e with
+              | Some y -> PtVars [mvar_of_var y]
+              | None -> ptr_expr_of_expr abs0 e in
+            AbsDom.assign_ptr_expr abs mvar ptr_expr in
 
-        (* Offset abstraction *)
-        let abs = aeval_offset abs out_ty mvar (Some loc) e in
+        (* Offset abstraction. The value read from a table cell is the base
+           of its region, so its offset is exactly 0; any other expression
+           is handled by [aeval_offset]. *)
+        let abs = match cell, ty_gvar_of_mvar mvar with
+          | Some _, Some outv ->
+            let zero = Mtexpr.cst (Coeff.s_of_int 0)
+                       |> sexpr_from_simple_expr in
+            AbsDom.assign_sexpr abs None [MvarOffset outv, zero]
+          | _ -> aeval_offset abs out_ty mvar (Some loc) e in
 
         a_init_mlv_no_array out_mvar abs
 
@@ -1485,6 +1531,60 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
         end
 
       | _ -> assert false
+
+  (* The provenance an array expression copies, read in [snap]: that of [z]
+     for [Pvar z], moved by the byte offset [o] for [z[o : n]] with [o]
+     constant in [snap]. J is kept only when the copy fits: [c + o] is
+     non-negative and [size], the size of the destination in bytes, still
+     ends within the bytes of [x]. The front end gives [y = z] two arrays of
+     one type, so the check matters only for a sub-array of the array
+     itself, whose bounds the checker *checks* rather than assumes. *)
+  let copy_prov snap ~size e = match e with
+    | Pvar z when z.gs = Expr.Slocal ->
+      begin match AbsDom.array_prov snap (L.unloc z.gv) with
+      | Some (x, c) -> if c + size <= arr_bytes x then Some (x, c) else None
+      | None -> None
+      end
+    | Psub (aa, ws, _, z, ei) when z.gs = Expr.Slocal ->
+      begin match AbsDom.array_prov snap (L.unloc z.gv),
+                  aeval_cst_int snap ei with
+      | Some (x, c), Some i ->
+        let o = access_offset aa ws i in
+        if 0 <= o && c + o + size <= arr_bytes x then Some (x, c + o)
+        else None
+      | _ -> None
+      end
+    | _ -> None
+
+  (* The provenance of arrays across one instruction
+     ([SafetyInterfaces.PointsTo.array_prov]). In the source semantics
+     ([write_lvals], [vrvP]) an array changes value only through an lvalue
+     that names it, and the value of every result is evaluated before any
+     lvalue is written. So, whatever path the numerical domain took for each
+     lvalue: every array named by an lvalue loses its binding, and a whole
+     array [y] written with a copy of an array that has a binding in [snap],
+     the state before the instruction, receives that binding. The lvalues
+     are taken from left to right, so a later one overrides an earlier one,
+     as a later write does. [lv_srcs] pairs each lvalue with the expression
+     of its value in [snap], when there is one; an expression the rule does
+     not recognise (a cast, an arithmetic operation, an unknown offset, a
+     #copy of a non-array) removes the binding too, never keeps it: every
+     "none" here is an active removal. *)
+  let update_prov snap abs lv_srcs =
+    List.fold_left (fun abs (lv, src) -> match lv with
+        | Lnone _ | Lmem _ -> abs
+        | Laset (_, _, _, x, _) | Lasub (_, _, _, x, _) ->
+          AbsDom.set_prov abs (L.unloc x) None
+        | Lvar x ->
+          let x = L.unloc x in
+          match x.v_ty with
+          | Arr _ ->
+            let p = match src with
+              | Some e -> copy_prov snap ~size:(arr_bytes x) e
+              | None -> None in
+            AbsDom.set_prov abs x p
+          | Bty _ -> abs)
+      abs lv_srcs
 
   (* The variables an lvalue reads to locate what it writes. *)
   let index_vars = function

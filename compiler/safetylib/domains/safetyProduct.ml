@@ -569,6 +569,11 @@ module PIMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extended_o
     | MmemRange (MemLoc v) ->
       if Sv.mem v v_pt then Ppl 0 else Nrd 0
 
+    (* A cell region follows its array: it is relational exactly when the
+       region of the array would be. *)
+    | MmemRange (MemCell (v, _)) ->
+      if Sv.mem v v_pt then Ppl 0 else Nrd 0
+
     | Mglobal _
     | Mlocal (AarraySlice _)
     | Mlocal (Aarray _) -> Nrd 0
@@ -777,6 +782,10 @@ module PIDynMake (Arch : SafetyArch.SafetyArch) (PW : ProgWrap with type extende
       if Sv.mem v sv_ini then Ppl 0 else Nrd 0
       
     | MmemRange (MemLoc v) ->
+      if Sv.mem v pt_ini then Ppl 0 else Nrd 0
+
+    (* As in the static packing: a cell region follows its array. *)
+    | MmemRange (MemCell (v, _)) ->
       if Sv.mem v pt_ini then Ppl 0 else Nrd 0
 
     | Mglobal _

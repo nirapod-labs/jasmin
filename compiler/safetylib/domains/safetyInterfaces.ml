@@ -189,6 +189,19 @@ module type PointsTo = sig
   val var_points_to : t -> mvar -> ptrs
   val assign_ptr_expr : t -> mvar -> ptr_expr -> t
 
+  (* [assign_region t v m]: [v] points to the region [m] alone, at the
+     offset the caller sets. *)
+  val assign_region : t -> mvar -> mem_loc -> t
+
+  (* [array_prov t y = Some (x, c)]: every byte [i] of the array [y] is byte
+     [c + i] of the entry value of the export argument [x], so that a
+     pointer read from cell [(c + i) / 8] of [x] points to [MemCell (x, _)].
+     [None] states nothing, and a read from an array without provenance
+     points to anything. [set_prov t y None] removes the binding: every
+     removal in [SafetyAbsExpr.update_prov] is an active one. *)
+  val array_prov : t -> var -> (var * int) option
+  val set_prov : t -> var -> (var * int) option -> t
+
   val print : Format.formatter -> t -> unit
 end
 
@@ -247,6 +260,11 @@ module type AbsNumBoolType = sig
 
   val var_points_to : t -> mvar -> ptrs
   val assign_ptr_expr : t -> mvar -> ptr_expr -> t
+  val assign_region : t -> mvar -> mem_loc -> t
+
+  (* See [PointsTo.array_prov] and [PointsTo.set_prov]. *)
+  val array_prov : t -> var -> (var * int) option
+  val set_prov : t -> var -> (var * int) option -> t
 
   (* [subst_btcons t c] returns an constraint [c'] equivalent to
      [c] in any state satisfying [t]. *)

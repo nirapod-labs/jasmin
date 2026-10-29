@@ -1,0 +1,21 @@
+/* in receives, through #protect_ptr, a table whose cell 0 is q. */
+export fn lanes_protect_ptr_written(reg mut ptr u64[1] in, reg u64 q len) -> reg u64, reg ptr u64[1]
+{
+  stack u64[1] cs;
+  reg ptr u64[1] c;
+  reg u64 ms p i b r;
+
+  ms = #init_msf();
+  c = cs;
+  c[0] = q;
+  in = #protect_ptr(c, ms);
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

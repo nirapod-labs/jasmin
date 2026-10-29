@@ -1,0 +1,43 @@
+/* The library's shape: the table goes whole to a callee that loads each
+   lane pointer, protects it, keeps the table on the stack across a call
+   to a reader of len bytes, and protects the table on reload. */
+fn read_len(reg u64 p l) -> reg u64
+{
+  reg u64 i b vr;
+
+  vr = 0;
+  i = 0;
+  while (i < l) {
+    b = (64u)[:u8 p + i];
+    vr ^= b;
+    i += 1;
+  }
+  return vr;
+}
+
+fn per_lane(reg const ptr u64[2] t, reg u64 l, reg u64 f) -> reg u64
+{
+  inline int k;
+  reg u64 p pr s;
+
+  pr = 0;
+  for k = 0 to 2 {
+    p = t[k];
+    p = #protect(p, f);
+    () = #spill(t, l, pr);
+    s = read_len(p, l);
+    () = #unspill(t, l, pr);
+    t = #protect_ptr(t, f);
+    pr ^= s;
+  }
+  return pr;
+}
+
+export fn lanes_call(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 f er;
+
+  f = #init_msf();
+  er = per_lane(in, len, f);
+  return er;
+}

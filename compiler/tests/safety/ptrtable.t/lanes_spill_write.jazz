@@ -1,0 +1,19 @@
+/* The table is written between a spill and an unspill. The compiler
+   rejects the program; the checker must not accept the read. */
+export fn lanes_spill_write(reg mut ptr u64[1] in, reg u64 q len) -> reg u64, reg ptr u64[1]
+{
+  reg u64 p i b r;
+
+  () = #spill(in);
+  in[0] = q;
+  () = #unspill(in);
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

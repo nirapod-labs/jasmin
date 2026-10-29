@@ -1,0 +1,17 @@
+/* A narrower read, then a cast. */
+export fn lanes_narrow(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 p i b r;
+  reg u32 w;
+
+  w = in[:u32 0];
+  p = (64u) w;
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}
