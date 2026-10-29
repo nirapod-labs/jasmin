@@ -1203,6 +1203,22 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     | MLvars(_, mvs) -> List.fold_left remove_array_contents_mv abs mvs
     | MLasub(_, _ms) -> failwith "Not implemented (explicit array init of a slice)"
 
+  (* The byte cells of the slice of [x] of [len] bytes at offset [off] *)
+  let slice_cells x off len =
+    List.init (max 0 len) (fun i -> AarraySlice (x, U8, off + i))
+
+  (* Are all the cells that a copy from [ms] may read initialized?
+     These are the cells of the slice, or of the whole array if the offset
+     is unknown. Global arrays are fully initialized. *)
+  let slice_init abs (ms : int option gmsub) =
+    match ms.ms_sc with
+    | Expr.Sglob -> true
+    | Expr.Slocal ->
+      let cells = match ms.ms_offset with
+        | Some off -> slice_cells ms.ms_v off (ms.ms_len * size_of_ws ms.ms_ws)
+        | None -> arr_full_range ms.ms_v in
+      List.for_all (AbsDom.check_init abs) cells
+
   (* Array slice assignment. Does the numerical assignments.
      Remark: array elements do not need to be tracked in the point-to
      abstraction. *)
@@ -1213,20 +1229,90 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
       and rhs = { rhs with ms_offset = roff } in
       assign_slice_aux abs lhs rhs
 
-    (* If any offset is unknown, we need to forget the array content. *)
-    | _, _ -> array_contents lhs.ms_v |> AbsDom.forget_list abs
+    (* If any offset is unknown, we need to forget the array content.
+       Moreover, if the copied cells may be uninitialized, so may be the
+       cells that are written. If the written cells are known and all the
+       cells that may be copied are initialized, the written cells are. *)
+    | Some loff, None ->
+      let abs = array_contents lhs.ms_v |> AbsDom.forget_list abs in
+      let cells = slice_cells lhs.ms_v loff (lhs.ms_len * size_of_ws lhs.ms_ws) in
+      if slice_init abs rhs then List.fold_left AbsDom.is_init abs cells
+      else List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs
+
+    | None, _ ->
+      if slice_init abs rhs
+      then array_contents lhs.ms_v |> AbsDom.forget_list abs
+      else array_contents lhs.ms_v |> AbsDom.remove_vars abs
 
   let init_slice abs lhs es =
     match lhs.ms_offset with
     | None -> array_contents lhs.ms_v |> AbsDom.forget_list abs
     | Some loff ->
-       List.fold_lefti (fun abs i e ->
-           AbsDom.is_init abs (AarraySlice (lhs.ms_v, U8, i))
-         ) abs es
+       let cells = slice_cells lhs.ms_v loff (List.length es) in
+       let abs = List.map (fun at -> Mlocal at) cells |> AbsDom.forget_list abs in
+       List.fold_left AbsDom.is_init abs cells
 
   let omvar_is_offset = function
     | MLvar (_, MvarOffset _) -> true
     | _ -> false
+
+  (* The bounds of an unsigned right shift by a constant [k]. For
+     [x = y >> k] with [x] and [y] of the same width [w] and
+     [0 <= k <= w], every concrete state satisfies
+     [2^k x <= y <= 2^k x + 2^k - 1], and over the integers the two bounds
+     determine [x = floor(y / 2^k)]. The shifted expression must have the
+     shift's width: a wider operand is truncated before the shift, and the
+     bounds on the untruncated expression would be false. The numerical
+     abstraction of the shift, [y / 2^k] linearized with a rounding
+     interval, is looser: it
+     proves neither bound, so a loop counter derived from a length loses
+     the exact relation to that length. The bounds are linear, so they are
+     met exactly. The shifted expression is copied into a fresh variable
+     in [before], the state before the assignment; the assignment runs as
+     before, then the bounds between the destination and the copy are met,
+     and the copy is forgotten. Copying the value first keeps the old value
+     of a variable shifted by itself ([n >>= 6]) after the assignment has
+     projected it, and leaving the assignment's expression unchanged keeps
+     the symbolic value of the destination. A shifted expression with a
+     conditional has
+     no single linear form; the bounds are then not added and the
+     assignment keeps the abstraction [linearize_if_expr] gives it. A
+     destination narrower than the shift truncates the value, which the
+     width condition excludes. *)
+  let shift_bounds before out_ty mvar e =
+    match out_ty, remove_Owi e with
+    | Bty (U ws), Papp2 (Olsr ws', e1, e2) when ws = ws' ->
+      begin match aeval_cst_w_i before e2 with
+      | Some k when 0 <= k && k <= int_of_ws ws ->
+        begin match ty_expr e1, remove_if_expr e1 with
+        | Bty (U ws1), [([], e1)] when ws1 = ws ->
+          begin try
+            let tmp = Temp ("shift", 0, ty_mvar mvar) in
+            let tmp_e = Mtexpr.var tmp in
+            let y = linearize_wexpr before e1 in
+            let copy =
+              Mtcons.make (Mtexpr.binop Texpr1.Sub tmp_e y) Lincons0.EQ in
+            let pow = Mtexpr.cst (Coeff.s_of_mpqf (mpq_pow k)) in
+            let pow_x = Mtexpr.binop Texpr1.Mul pow (Mtexpr.var mvar) in
+            let lower = Mtexpr.binop Texpr1.Sub tmp_e pow_x in
+            let upper =
+              Mtexpr.binop Texpr1.Sub
+                (Mtexpr.binop Texpr1.Add pow_x
+                   (Mtexpr.cst (Coeff.s_of_mpqf (mpq_pow_minus k 1))))
+                tmp_e in
+            Some (tmp, [copy],
+                  [ Mtcons.make lower Lincons0.SUPEQ;
+                    Mtcons.make upper Lincons0.SUPEQ ])
+          with
+          | Aint_error _
+          | Unop_not_supported _
+          | Binop_not_supported _ -> None
+          end
+        | _ -> None
+        end
+      | _ -> None
+      end
+    | _ -> None
 
   (* Abstract evaluation of an assignment.
      Also handles variable initialization. *)
@@ -1244,9 +1330,23 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
       | Bty (U _), MLvar (loc, mvar) ->
         (* Numerical abstraction *)
         let lv_s = wsize_of_ty out_ty in
-        let s_expr = linearize_if_expr lv_s e abs in
         let abs0 = abs in
-        let abs = AbsDom.assign_sexpr abs (Some loc) [mvar, s_expr] in
+        let abs =
+          match shift_bounds abs0 out_ty mvar e with
+          | Some (tmp, pre, post) ->
+            let meet_cs abs cs =
+              List.fold_left
+                (fun abs c -> AbsDom.meet_btcons abs (BLeaf c))
+                abs cs in
+            let abs = meet_cs abs pre in
+            let s_expr = linearize_if_expr lv_s e abs in
+            let abs = AbsDom.assign_sexpr abs (Some loc) [mvar, s_expr] in
+            let abs = meet_cs abs post in
+            AbsDom.forget_list abs [tmp]
+          | None ->
+            let s_expr = linearize_if_expr lv_s e abs in
+            AbsDom.assign_sexpr abs (Some loc) [mvar, s_expr]
+        in
 
         (* Points-to abstraction *)
         let ptr_expr = ptr_expr_of_expr abs0 e in
