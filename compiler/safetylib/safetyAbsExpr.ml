@@ -346,6 +346,25 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     | 0 -> Some x
     | i -> Some (if 0 < i then Z.shift_left x i else Z.shift_right x (-i))
 
+  (* Integer quotient and remainder as the source semantics defines them
+     (proofs/lang/sem_op_total.v): the unsigned operators are Rocq's
+     [Z.div] and [Z.modulo], which round toward minus infinity, and the
+     signed ones are [Z.quot] and [Z.rem], which round toward zero. Zarith's
+     [Z.div] and [Z.rem] round toward zero, [Z.fdiv] toward minus infinity.
+     All four Rocq functions are total: a divisor of 0 gives 0 for the
+     quotient and the dividend for the remainder. *)
+  let zint_div sg x y =
+    if Z.equal y Z.zero then Z.zero
+    else match sg with
+      | Unsigned -> Z.fdiv x y
+      | Signed -> Z.div x y
+
+  let zint_mod sg x y =
+    if Z.equal y Z.zero then x
+    else match sg with
+      | Unsigned -> Z.sub x (Z.mul y (Z.fdiv x y))
+      | Signed -> Z.rem x y
+
   (* Try to evaluate e to a constant expression in abs *)
   let rec aeval_cst_zint abs e = match e with
     | Pvar x -> aeval_cst_var abs x
@@ -357,9 +376,20 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     | Papp1 (Oneg Op_int, e) ->
       Option.map Z.neg (aeval_cst_zint abs e)
 
-    | Papp1 (Oint_of_word _, e) ->
-      aeval_cst_zint abs e
-    (* No need to check for overflows because we do not allow word operations. *)
+    (* The operand is a word variable, whose constant [aeval_cst_var] gives
+       only when it lies in [0; 2^ws), the unsigned reading of the word; no
+       other word expression has a constant here. The signed reading
+       subtracts 2^ws when the sign bit is set. *)
+    | Papp1 (Oint_of_word (sg, ws), e) ->
+      let n = int_of_ws ws in
+      Option.map (fun c ->
+          match sg with
+          | Unsigned -> c
+          | Signed ->
+            if Z.geq c (Z.shift_left Z.one (n - 1))
+            then Z.sub c (Z.shift_left Z.one n)
+            else c)
+        (aeval_cst_zint abs e)
 
     | Papp2 (Oadd Op_int, e1, e2) ->
       obind2 (fun x y -> Some (Z.add x y))
@@ -373,8 +403,15 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
       obind2 (fun x y -> Some (Z.mul x y))
         (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
 
-    | Papp2 (Odiv (Unsigned, Op_int), e1, e2) ->
-        obind2 (fun x y -> Some (Z.div x y))
+    | Papp2 (Odiv (sg, Op_int), e1, e2) ->
+        obind2 (fun x y -> Some (zint_div sg x y))
+          (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
+
+    (* With the remainder evaluated, an index such as [t % 2] with [t] the
+       counter of an unrolled [for] loop names one cell, so a write there
+       initializes that cell instead of forgetting the whole array. *)
+    | Papp2 (Omod (sg, Op_int), e1, e2) ->
+        obind2 (fun x y -> Some (zint_mod sg x y))
           (aeval_cst_zint abs e1) (aeval_cst_zint abs e2)
 
     | Papp2 (Olsl Op_int, e1, e2) ->
@@ -507,6 +544,39 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
           Mtexpr.unop absop (linearize_iexpr abs e1)
 
         | None -> raise (Unop_not_supported op1) end
+
+    (* APRON divides integers rounding toward zero (round_typ), as Rocq's
+       [Z.quot] does, and leaves a division by 0 undefined. The signed
+       integer quotient of the source is [Z.quot]; it is passed to APRON
+       when the divisor cannot be 0. The unsigned quotient and remainder
+       round toward minus infinity ([aeval_cst_zint]), and the signed
+       remainder takes the sign of the dividend; all of them agree with
+       APRON's rounding when the dividend is non-negative and the divisor
+       positive, and only then are they passed to APRON. Otherwise the
+       value of the operation is unknown. *)
+    | Papp2 (op2, e1, e2)
+      when (match remove_Owi2 op2 with
+          | Odiv (_, Op_int) | Omod (_, Op_int) -> true
+          | _ -> false) ->
+      let lin1 = linearize_iexpr abs e1
+      and lin2 = linearize_iexpr abs e2 in
+      let within lin lo hi =
+        Interval.is_leq (AbsDom.bound_texpr abs lin) (Interval.of_scalar lo hi) in
+      let zero = Scalar.of_int 0 and one = Scalar.of_int 1
+      and minus_one = Scalar.of_int (-1)
+      and minus_inf = Scalar.of_infty (-1) and plus_inf = Scalar.of_infty 1 in
+      let positive lin = within lin one plus_inf in
+      let truncation_agrees () = within lin1 zero plus_inf && positive lin2 in
+      begin match remove_Owi2 op2 with
+        | Odiv (Signed, _)
+          when positive lin2 || within lin2 minus_inf minus_one ->
+          Mtexpr.binop Texpr1.Div lin1 lin2
+        | Odiv _ when truncation_agrees () ->
+          Mtexpr.binop Texpr1.Div lin1 lin2
+        | Omod _ when truncation_agrees () ->
+          Mtexpr.binop Texpr1.Mod lin1 lin2
+        | _ -> raise (Binop_not_supported op2)
+      end
 
     | Papp2 (op2, e1, e2) ->
       begin match op2_to_abs_binop (remove_Owi2 op2) with
@@ -1104,15 +1174,34 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
         apply_offset_expr abs outv info y o
       else aeval_top_offset abs outv
 
+    (* [abs] is the state after the assignment, where [outv] already holds
+       its new value; [er] is linearized in it, so it must not contain
+       [outv]. The offset of [y] is still the old one. *)
     | Some outv, Papp2 (op2,el,er) -> begin match remove_Owi2 op2, el with
         | Oadd (Op_w ws), Pvar y when ws = Arch.pointer_data ->
-          if valid_offset_var abs ws_o y then
-            apply_offset_expr abs outv info y er
+          if valid_offset_var abs ws_o y && not (Sv.mem outv (vars_e er)) then
+            try apply_offset_expr abs outv info y er with
+            | Unop_not_supported _ | Binop_not_supported _ | If_not_supported ->
+              aeval_top_offset abs outv
           else aeval_top_offset abs outv
 
         | _ -> aeval_top_offset abs outv end
 
     | Some outv, _ -> aeval_top_offset abs outv
+
+  (* The base [y] of an assignment [out = y + e] at pointer width for which
+     [aeval_offset] computes the offset of [out] relative to [y]: [y] points
+     to exactly one region in [abs], the state before the assignment, and
+     [out] does not occur in [e]. *)
+  let offset_base abs ws_o outmv e =
+    match ty_gvar_of_mvar outmv, e with
+    | Some outv, Papp2 (op2, Pvar y, er) ->
+      begin match remove_Owi2 op2 with
+        | Oadd (Op_w ws) when ws = Arch.pointer_data
+                           && valid_offset_var abs ws_o y
+                           && not (Sv.mem outv (vars_e er)) -> Some y
+        | _ -> None end
+    | _ -> None
 
   (* Initialize variable or array elements. *)
   let a_init_mv_no_array mv abs = match mv with
@@ -1172,15 +1261,23 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
     (* Numerical abstraction *)
     let a = AbsDom.assign_sexpr a None ves in
 
-    (* Initialization *)
-    List.fold_left (fun a (vi,eiv) ->
-        List.fold_left2 (fun a vi eiv -> match rhs.ms_sc with
-            | Expr.Slocal -> AbsDom.copy_init a vi eiv
-            | Expr.Sglob  -> AbsDom.is_init a (get_at vi))
-          a
+    (* Initialization, byte by byte. The bytes come in ascending order. When
+       the copy moves bytes up within one array, a byte would be read after
+       an earlier step wrote it, so they are copied in descending order. *)
+    let bytes = List.concat_map (fun (vi, eiv) ->
+        List.combine
           (u8_blast_var ~blast_arrays:true vi)
           (u8_blast_var ~blast_arrays:true eiv)
-      ) a vevs
+      ) vevs in
+    let bytes =
+      if rhs.ms_sc = Expr.Slocal && V.equal lgv rgv
+         && lhs.ms_offset > rhs.ms_offset
+      then List.rev bytes
+      else bytes in
+    List.fold_left (fun a (vi, eiv) -> match rhs.ms_sc with
+        | Expr.Slocal -> AbsDom.copy_init a vi eiv
+        | Expr.Sglob  -> AbsDom.is_init a (get_at vi))
+      a bytes
 
   (* The variables representing the contents of an array *)
   let array_contents lhs_arr =
@@ -1348,8 +1445,17 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
             AbsDom.assign_sexpr abs (Some loc) [mvar, s_expr]
         in
 
-        (* Points-to abstraction *)
-        let ptr_expr = ptr_expr_of_expr abs0 e in
+        (* Points-to abstraction. For [out = y + e] with [y] pointing to one
+           region [r], the offset abstraction below sets
+           [offset(out) = offset(y) + e], so [out] is [r]'s base plus
+           [offset(out)], whatever the variables of [e] point to: [out]
+           points to [r] alone. Any other expression points to every region
+           its variables point to. A memory access uses a pointer only when
+           it points to one region, so the union carried nothing an access
+           could use. *)
+        let ptr_expr = match offset_base abs0 out_ty mvar e with
+          | Some y -> PtVars [mvar_of_var y]
+          | None -> ptr_expr_of_expr abs0 e in
         let abs = AbsDom.assign_ptr_expr abs mvar ptr_expr in
 
         (* Offset abstraction *)
@@ -1380,26 +1486,71 @@ module AbsExpr (Arch : SafetyArch.SafetyArch) (AbsDom : AbsNumBoolType) = struct
 
       | _ -> assert false
 
-  let abs_assign_opn abs loc lvs assgns =
-    let abs, mlvs_forget =
-      List.fold_left2 (fun (abs, mlvs_forget) lv e_opt ->
+  (* The variables an lvalue reads to locate what it writes. *)
+  let index_vars = function
+    | Lnone _ | Lvar _ -> Sv.empty
+    | Lmem (_, _, _, e) | Laset (_, _, _, _, e) | Lasub (_, _, _, _, e) ->
+      vars_e e
+
+  (* The source semantics of an operator (lang/psem_defs.v, [sem_sopn])
+     evaluates all its results from its arguments, then writes the lvalues
+     from left to right, each in the state the writes before it left
+     ([write_lvals]). Here the lvalues are written in the same order, so:
+     - a result that reads a variable an earlier lvalue has written would
+       see the new value (for [x, y = #swap(x, y)], [y] would receive the
+       new [x]): it is made unknown;
+     - an unknown scalar result is forgotten after the last write, so that
+       the results after it still read the old value; an lvalue whose index
+       reads such a variable first forgets every pending one, since its
+       index uses the new value;
+     - [check] checks the safety of each lvalue in the state just before
+       it is written. *)
+  let abs_assign_opn ?(check = fun abs _ -> abs) abs loc lvs assgns =
+    let forget abs pending =
+      AbsDom.forget_list abs (List.sort_uniq Stdlib.compare pending) in
+    let abs, pending, _, _ =
+      List.fold_left2 (fun (abs, pending, pending_vs, written) lv e_opt ->
+          let abs, pending, pending_vs =
+            if Sv.disjoint (index_vars lv) pending_vs
+            then abs, pending, pending_vs
+            else forget abs pending, [], Sv.empty in
+          let abs = check abs lv in
+          let e_opt = match e_opt with
+            | Some e when not (Sv.disjoint (vars_e e) written) -> None
+            | _ -> e_opt in
+          let x = match lv with
+            | Lvar x | Laset (_, _, _, x, _) | Lasub (_, _, _, x, _) ->
+              Some (L.unloc x)
+            | Lnone _ | Lmem _ -> None in
+          let add vs = match x with Some x -> Sv.add x vs | None -> vs in
           match mvar_of_lvar abs loc lv, e_opt with
-          | MLnone, _ -> (abs, mlvs_forget)
+          | MLnone, _ -> (abs, pending, pending_vs, written)
 
+          (* An unknown array result: its cells are unknown, and may be
+             uninitialized. *)
+          | MLvar (_, (Mlocal (Aarray _) as mv)), None ->
+            (remove_array_contents_mv abs mv, pending, pending_vs, add written)
+          | MLasub (_, ms), None ->
+            let cells = match ms.ms_offset with
+              | Some off ->
+                slice_cells ms.ms_v off (ms.ms_len * size_of_ws ms.ms_ws)
+              | None -> arr_full_range ms.ms_v in
+            (List.map (fun at -> Mlocal at) cells |> AbsDom.remove_vars abs,
+             pending, pending_vs, add written)
+
+          (* An unknown scalar result. *)
           | MLvar (_,mlv) as cmlv, None ->
-            (* Remark: n-ary operation cannot return arrays. *)
             let abs = a_init_mlv_no_array cmlv abs in
-            (abs, mlv :: mlvs_forget)
-          | MLvar _ as mlv, Some e ->
-            (abs_assign abs (ty_lval lv) mlv e, mlvs_forget)
+            (abs, mlv :: pending, add pending_vs, written)
 
-          | MLvars (_, mlvs), _ -> (abs, mlvs @ mlvs_forget)
-          | MLasub _, _ -> assert false (* opn do not return arrays. *)
-        ) (abs,[]) lvs assgns in
+          (* [#swap] can return arrays. *)
+          | (MLvar _ | MLasub _) as mlv, Some e ->
+            (abs_assign abs (ty_lval lv) mlv e, pending, pending_vs, add written)
 
-    let mlvs_forget = List.sort_uniq Stdlib.compare mlvs_forget in
+          | MLvars (_, mlvs), _ -> (abs, mlvs @ pending, add pending_vs, written)
+        ) (abs, [], Sv.empty, Sv.empty) lvs assgns in
 
-    AbsDom.forget_list abs mlvs_forget
+    forget abs pending
 
 end
 

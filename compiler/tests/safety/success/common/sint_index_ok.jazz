@@ -1,0 +1,11 @@
+/* (sint) w is -1 for w = 2^32 - 1, so the index is 0. */
+export fn sint_index_ok(reg u32 a) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 w x;
+
+  m[0] = a;
+  w = -1;
+  x = m[(sint) w + 1];
+  return x;
+}

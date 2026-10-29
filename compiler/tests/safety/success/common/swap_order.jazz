@@ -1,0 +1,23 @@
+/* The results of #swap that do not read an earlier lvalue keep their
+   values: distinct operands, the first result of a swap in place, and an
+   index that reads the new value of an earlier lvalue (the old one, 5, is
+   out of bounds). */
+export fn swap_order() -> reg u64
+{
+  stack u64[2] t;
+  reg u64 x y z w r;
+
+  t[0] = 0;
+  t[1] = 1;
+  z = 1;
+  w = 0;
+  x, y = #swap(z, w);
+  r = t[x];
+  r += t[y];
+  x, y = #swap(x, y);
+  r += t[x];
+  x = 5;
+  x, t[x] = #swap(z, w);
+  r += t[1];
+  return r;
+}

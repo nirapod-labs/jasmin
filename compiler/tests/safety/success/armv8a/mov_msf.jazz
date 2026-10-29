@@ -1,0 +1,24 @@
+/* As protect_loop, with the index protected by a copy of the flag made
+   by #mov_msf: the copy passes the index through as the flag does. */
+export fn mov_msf(reg u64 x) -> reg u64
+{
+  reg u64[2] a;
+  reg u64 i ms ms2 r t;
+  reg bool b;
+
+  ms = #init_msf();
+  a[0] = x;
+  a[1] = x;
+  r = 0;
+  i = 0;
+  while { b = i < 2; } (b) {
+    ms = #update_msf(b, ms);
+    ms2 = #mov_msf(ms);
+    i = #protect(i, ms2);
+    t = a[i];
+    r ^= t;
+    i += 1;
+  }
+  ms = #update_msf(!b, ms);
+  return r;
+}

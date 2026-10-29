@@ -1,0 +1,12 @@
+/* The destination occurs on the right of the addition: q = in + q. The
+   offset of q cannot be read from the state after the assignment, so q
+   keeps every region of its operands. */
+export fn moved_self(reg u64 in inlen) -> reg u64
+{
+  reg u64 q r;
+
+  q = inlen;
+  q = in + q;
+  r = [q];
+  return r;
+}

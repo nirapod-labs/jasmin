@@ -1,0 +1,16 @@
+/* At t = 2, t % 3 is 2, out of the bounds of m. */
+export fn mod_index_oob(reg u32 a) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 r x;
+  inline int t;
+
+  m[0] = a;
+  m[1] = a;
+  r = 0;
+  for t = 0 to 4 {
+    x = m[t % 3];
+    r ^= x;
+  }
+  return r;
+}

@@ -1,0 +1,12 @@
+/* #swap writes both results at once: after it, b holds the old contents
+   of a, which were never written. */
+export fn swap_init(reg u64 v) -> reg u64
+{
+  stack u64[1] a b;
+  reg u64 r;
+
+  b[0] = v;
+  a, b = #swap(a, b);
+  r = b[0];
+  return r;
+}

@@ -1,0 +1,15 @@
+/* After the join, q is a or in: it points to two regions, so the read
+   through q + off has no single region. */
+export fn moved_two(reg u64 a in off c) -> reg u64
+{
+  reg u64 q r;
+
+  if (c == 0) {
+    q = a;
+  } else {
+    q = in;
+  }
+  q += off;
+  r = [q];
+  return r;
+}

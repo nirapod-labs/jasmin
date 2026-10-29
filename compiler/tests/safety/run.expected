@@ -142,6 +142,97 @@ Analyzing function ldp_uninit
 
 Program is not safe!
 
+File fail/armv8a/protect_loop_oob.jazz (on arch armv8a):
+Analyzing function protect_loop_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/armv8a/protect_loop_oob.jazz", line 18 (4-13): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/armv8a/protect_oob.jazz (on arch armv8a):
+Analyzing function protect_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/armv8a/protect_oob.jazz", line 13 (2-11): is_init a[i]
+  "fail/armv8a/protect_oob.jazz", line 13 (2-11): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/armv8a/protect_ptr_uninit.jazz (on arch armv8a):
+Analyzing function protect_ptr_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/armv8a/protect_ptr_uninit.jazz", line 15 (2-11): is_init p[0]
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/armv8a/range_space.jazz (on arch armv8a):
+Analyzing function range_space
+
+
+*** Possible Safety Violation(s):
+  range_space return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551630]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551630, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551630]
+
+
+
+Program is not safe!
+
+File fail/armv8a/range_whole.jazz (on arch armv8a):
+Analyzing function range_whole
+
+
+*** Possible Safety Violation(s):
+  range_whole return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551616]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551616, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551616]
+
+
+
+Program is not safe!
+
 File fail/common/array-len3.jazz (on arch x86-64):
 Analyzing function array
 
@@ -249,6 +340,278 @@ Analyzing function bad_read
   
 * Rel:
 ⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch x86-64):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch arm-m4):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch armv8a):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/call_index.jazz (on arch riscv):
+Analyzing function call_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/call_index.jazz", line 20 (2-19): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch x86-64):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch arm-m4):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch armv8a):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/copy_overlap.jazz (on arch riscv):
+Analyzing function copy_overlap
+
+
+*** Possible Safety Violation(s):
+  "fail/common/copy_overlap.jazz", line 13 (2-16): is_init x[8]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_index_neg.jazz (on arch x86-64):
+Analyzing function div_index_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_index_neg.jazz", line 13 (4-27): is_init m[(t - 1) / 2 + 1]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_index_neg.jazz (on arch arm-m4):
+Analyzing function div_index_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_index_neg.jazz", line 13 (4-27): is_init m[(t - 1) / 2 + 1]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_index_neg.jazz (on arch armv8a):
+Analyzing function div_index_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_index_neg.jazz", line 13 (4-27): is_init m[(t - 1) / 2 + 1]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_index_neg.jazz (on arch riscv):
+Analyzing function div_index_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_index_neg.jazz", line 13 (4-27): is_init m[(t - 1) / 2 + 1]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_range_neg.jazz (on arch x86-64):
+Analyzing function div_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_range_neg.jazz", line 13 (4-30): in_bound: m[((uint) w - 1) / 2] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_range_neg.jazz (on arch arm-m4):
+Analyzing function div_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_range_neg.jazz", line 13 (4-30): in_bound: m[((uint) w - 1) / 2] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_range_neg.jazz (on arch armv8a):
+Analyzing function div_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_range_neg.jazz", line 13 (4-30): in_bound: m[((uint) w - 1) / 2] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/div_range_neg.jazz (on arch riscv):
+Analyzing function div_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/div_range_neg.jazz", line 13 (4-30): in_bound: m[((uint) w - 1) / 2] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
 
 
 
@@ -465,6 +828,234 @@ Memory ranges:
 * Rel:
 {inv_x ≤ 4294967295, inv_x ≥ 0, mem_x = 0}
 mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch x86-64):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch arm-m4):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch armv8a):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_oob.jazz (on arch riscv):
+Analyzing function mod_index_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): is_init m[t % 3]
+  "fail/common/mod_index_oob.jazz", line 12 (4-17): in_bound: m[t % 3] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch x86-64):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch arm-m4):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch armv8a):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_index_uninit.jazz (on arch riscv):
+Analyzing function mod_index_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_index_uninit.jazz", line 13 (4-24): is_init m[(t + 1) % 2]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  mem_b: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, inv_b ≤ 4294967295, inv_b ≥ 0, mem_a = 0, mem_b = 0}
+mem_a ∊ [0; 0]
+mem_b ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_range_neg.jazz (on arch x86-64):
+Analyzing function mod_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_range_neg.jazz", line 14 (4-34): in_bound: m[((uint) w - 1) % 2 + 1] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_range_neg.jazz (on arch arm-m4):
+Analyzing function mod_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_range_neg.jazz", line 14 (4-34): in_bound: m[((uint) w - 1) % 2 + 1] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_range_neg.jazz (on arch armv8a):
+Analyzing function mod_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_range_neg.jazz", line 14 (4-34): in_bound: m[((uint) w - 1) % 2 + 1] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/mod_range_neg.jazz (on arch riscv):
+Analyzing function mod_range_neg
+
+
+*** Possible Safety Violation(s):
+  "fail/common/mod_range_neg.jazz", line 14 (4-34): in_bound: m[((uint) w - 1) % 2 + 1] (length 8 U8)
+  
+Memory ranges:
+  mem_w: [0; 0]
+  
+* Rel:
+{inv_w ≤ 4294967295, inv_w ≥ 0, mem_w = 0}
+mem_w ∊ [0; 0]
 
 
 
@@ -762,6 +1353,266 @@ mem_x ∊ [0; 0]
 
 Program is not safe!
 
+File fail/common/sint_index.jazz (on arch x86-64):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/sint_index.jazz (on arch arm-m4):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/sint_index.jazz (on arch armv8a):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/sint_index.jazz (on arch riscv):
+Analyzing function sint_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/sint_index.jazz", line 11 (2-31): is_init m[(sint) w - 4294967295]
+  "fail/common/sint_index.jazz", line 11 (2-31): in_bound: m[(sint) w - 4294967295] (length 8 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 4294967295, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch x86-64):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch arm-m4):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch armv8a):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_index.jazz (on arch riscv):
+Analyzing function swap_index
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_index.jazz", line 13 (2-24): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch x86-64):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch arm-m4):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch armv8a):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_init.jazz (on arch riscv):
+Analyzing function swap_init
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_init.jazz", line 10 (2-11): is_init b[0]
+  
+Memory ranges:
+  mem_v: [0; 0]
+  
+* Rel:
+{inv_v ≤ 18446744073709551615, inv_v ≥ 0, mem_v = 0}
+mem_v ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch x86-64):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch arm-m4):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch armv8a):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/common/swap_oob.jazz (on arch riscv):
+Analyzing function swap_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/common/swap_oob.jazz", line 12 (2-11): in_bound: t[y] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
 File fail/common/wint_overflow.jazz (on arch x86-64):
 Analyzing function wint_overflow
 
@@ -1028,6 +1879,57 @@ Bottom ⊥
 
 Program is not safe!
 
+File fail/x86-64/div_rem.jazz (on arch x86-64):
+Analyzing function div_rem
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/div_rem.jazz", line 14 (2-11): is_init m[r]
+  "fail/x86-64/div_rem.jazz", line 14 (2-11): in_bound: m[r] (length 16 U8)
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 18446744073709551615, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/x86-64/idiv_overflow.jazz (on arch x86-64):
+Analyzing function idiv_overflow
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/idiv_overflow.jazz", line 10 (2-34): (18446744073709551616 * ((uint) (hi +64u (64u) 9223372036854775808) - 9223372036854775808) + (uint) lo) /s ((uint) (d +64u (64u) 9223372036854775808) - 9223372036854775808) ∈ [-9223372036854775808; 9223372036854775807]
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
+File fail/x86-64/idiv_sign.jazz (on arch x86-64):
+Analyzing function idiv_sign
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/idiv_sign.jazz", line 14 (2-34): (18446744073709551616 * ((uint) (hi +64u (64u) 9223372036854775808) - 9223372036854775808) + (uint) lo) /s ((uint) (d +64u (64u) 9223372036854775808) - 9223372036854775808) ∈ [-9223372036854775808; 9223372036854775807]
+  
+Memory ranges:
+  mem_a: [0; 0]
+  
+* Rel:
+{inv_a ≤ 18446744073709551615, inv_a ≥ 0, mem_a = 0}
+mem_a ∊ [0; 0]
+
+
+
+Program is not safe!
+
 File fail/x86-64/load.jazz (on arch x86-64):
 Analyzing function load_last
 
@@ -1079,6 +1981,20 @@ Bottom ⊥
 
 Program is not safe!
 
+File fail/x86-64/mul_index.jazz (on arch x86-64):
+Analyzing function mul_index
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/mul_index.jazz", line 13 (2-38): in_bound: t[x] (length 16 U8)
+  
+* Rel:
+⊤
+
+
+
+Program is not safe!
+
 File fail/x86-64/popcnt.jazz (on arch x86-64):
 Analyzing function off_by_one
 
@@ -1091,6 +2007,97 @@ Memory ranges:
   
 * Rel:
 ⊤
+
+
+
+Program is not safe!
+
+File fail/x86-64/protect_loop_oob.jazz (on arch x86-64):
+Analyzing function protect_loop_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/protect_loop_oob.jazz", line 18 (4-13): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/x86-64/protect_oob.jazz (on arch x86-64):
+Analyzing function protect_oob
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/protect_oob.jazz", line 13 (2-11): is_init a[i]
+  "fail/x86-64/protect_oob.jazz", line 13 (2-11): in_bound: a[i] (length 16 U8)
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/x86-64/protect_ptr_uninit.jazz (on arch x86-64):
+Analyzing function protect_ptr_uninit
+
+
+*** Possible Safety Violation(s):
+  "fail/x86-64/protect_ptr_uninit.jazz", line 15 (2-11): is_init p[0]
+  
+Memory ranges:
+  mem_x: [0; 0]
+  
+* Rel:
+{inv_x ≤ 18446744073709551615, inv_x ≥ 0, mem_x = 0}
+mem_x ∊ [0; 0]
+
+
+
+Program is not safe!
+
+File fail/x86-64/range_space.jazz (on arch x86-64):
+Analyzing function range_space
+
+
+*** Possible Safety Violation(s):
+  range_space return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551630]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551630, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551630]
+
+
+
+Program is not safe!
+
+File fail/x86-64/range_whole.jazz (on arch x86-64):
+Analyzing function range_whole
+
+
+*** Possible Safety Violation(s):
+  range_whole return: bounded memory range of in
+  
+Memory ranges:
+  mem_in: [0; 18446744073709551616]
+  
+* Rel:
+{inv_in ≤ 18446744073709551615, inv_in ≥ 0, mem_in ≤ 18446744073709551616, mem_in ≥ 0}
+mem_in ∊ [0; 18446744073709551616]
 
 
 

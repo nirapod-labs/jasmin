@@ -1,0 +1,23 @@
+/* As moved.jazz with one more iteration: the last read is at in + inlen,
+   one byte past the buffer. */
+export fn moved_wide(reg u64 in inlen) -> reg u64
+{
+  reg u64 off n i r w;
+  reg u8 b;
+
+  r = 0;
+  off = inlen;
+  off >>= 6;
+  off <<= 6;
+  n = inlen;
+  n -= off;
+  in += off;
+  i = 0;
+  while (i <= n) {
+    b = [:u8 in + i];
+    w = (64u) b;
+    r ^= w;
+    i += 1;
+  }
+  return r;
+}

@@ -1,0 +1,23 @@
+/* The lvalues of a call are written from left to right: the index of
+   t[x] is the new x, 5, out of bounds. */
+inline fn five() -> reg u64, reg u64
+{
+  reg u64 a b;
+
+  a = 5;
+  b = 7;
+  return a, b;
+}
+
+export fn call_index() -> reg u64
+{
+  reg u64[2] t;
+  reg u64 x r;
+
+  t[0] = 0;
+  t[1] = 0;
+  x = 0;
+  x, t[x] = five();
+  r = t[0];
+  return r;
+}

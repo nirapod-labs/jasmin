@@ -1,0 +1,12 @@
+/* The offset of p is 2 * (2^63 - 1) + 8, so the read needs a region of
+   2^64 + 14 bytes at in, more than the address space has. */
+export fn range_space(reg u64 in) -> reg u64
+{
+  reg u64 p r;
+
+  p = in;
+  p += 0x7fffffffffffffff;
+  p += 0x7fffffffffffffff;
+  r = [p + 8];
+  return r;
+}

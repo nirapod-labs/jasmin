@@ -1,0 +1,13 @@
+/* A length as the base: q is inlen moved by the low three bits of in, so the
+   read is at an address made from a length. */
+export fn moved_lenbase(reg u64 in inlen) -> reg u64
+{
+  reg u64 q t r;
+
+  q = inlen;
+  t = in;
+  t &= 7;
+  q += t;
+  r = [q];
+  return r;
+}

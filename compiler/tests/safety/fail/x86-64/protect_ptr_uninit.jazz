@@ -1,0 +1,17 @@
+/* #protect_ptr returns its first operand: p is t, never written, and
+   the read of p[0] is uninitialized. */
+export fn protect_ptr_uninit(reg u64 x) -> reg u64
+{
+  stack u64[2] s t;
+  reg ptr u64[2] p q;
+  reg u64 ms r;
+
+  s[0] = x;
+  s[1] = x;
+  ms = #init_msf();
+  p = s;
+  q = t;
+  p = #protect_ptr(q, ms);
+  r = p[0];
+  return r;
+}

@@ -1,0 +1,15 @@
+/* A protected value is the value: i = 2 after #protect, and the read a[2]
+   is out of the bounds of a. */
+export fn protect_oob(reg u64 x) -> reg u64
+{
+  reg u64[2] a;
+  reg u64 i ms r;
+
+  ms = #init_msf();
+  a[0] = x;
+  a[1] = x;
+  i = 2;
+  i = #protect(i, ms);
+  r = a[i];
+  return r;
+}

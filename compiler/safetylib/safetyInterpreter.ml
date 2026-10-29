@@ -452,7 +452,8 @@ let safe_opn pd asmOp safe opn es =
            | Unsigned ->
              InRange(Pconst Z.zero, Papp2 (Osub Op_int, Papp2 (Omul Op_int, Pconst (modulus sz), d), Pconst Z.one), n)
           | Signed ->
-             InRange (Pconst (Z.neg (half_modulus sz)), Pconst (Z.pred (half_modulus sz)), Papp2 (Odiv(Unsigned, Op_int), n, d))
+             (* The quotient rounds toward zero, as in [sc_x86_division]. *)
+             InRange (Pconst (Z.neg (half_modulus sz)), Pconst (Z.pred (half_modulus sz)), Papp2 (Odiv(Signed, Op_int), n, d))
         ]
 
       (* [sc_not_zero ws k] *)
@@ -537,11 +538,18 @@ let rec safe_eassert cs e =
 
 let safe_instr pd asmOp ginstr = match ginstr.i_desc with
   | Cassgn (lv, _, _, e) -> safe_e_rec (safe_lval lv) e
-  | Copn (lvs,_,opn,es) -> safe_opn pd asmOp (safe_lvals lvs @ safe_es es) opn es
+  (* The lvalues of an operator with several results are checked one by
+     one, each just before it is written ([AbsExpr.abs_assign_opn]). *)
+  | Copn ([ _ ] as lvs,_,opn,es) -> safe_opn pd asmOp (safe_lvals lvs @ safe_es es) opn es
+  | Copn (_,_,opn,es) -> safe_opn pd asmOp (safe_es es) opn es
   | Cassert (_, e) -> safe_eassert [] e
   | Cif(e, _, _) -> safe_e e
   | Cwhile(_, _, _, _, _) -> []       (* We check the while condition later. *)
-  | Ccall(lvs, _, es) | Csyscall(lvs, _, es) -> safe_lvals lvs @ safe_es es
+  (* As for operators, the lvalues of a call with several results are
+     checked one by one, each just before it is written ([return_call]). *)
+  | Ccall(([] | [ _ ]) as lvs, _, es) -> safe_lvals lvs @ safe_es es
+  | Ccall(_, _, es) -> safe_es es
+  | Csyscall(lvs, _, es) -> safe_lvals lvs @ safe_es es
   | Cfor (_, (_, e1, e2), _) -> safe_es [e1;e2]
 
 let safe_return main_decl =
@@ -1128,9 +1136,22 @@ end = struct
     debug(fun () -> Format.eprintf "evaluating returned values ...@.");
     (* Finally, we assign the returned values in the corresponding lvalues *)
     let f_decl = get_fun_def fstate.prog fname |> oget in
-    let r_assgns = get_ret_assgns state.abs f_decl lvs in
-
-    let state = { state with abs = aeval_f_return state.abs r_assgns } in
+    let state = match lvs with
+      | [] | [ _ ] ->
+        let r_assgns = get_ret_assgns state.abs f_decl lvs in
+        { state with abs = aeval_f_return state.abs r_assgns }
+      | _ ->
+        (* As for an operator, the lvalues are written from left to right,
+           each located and checked in the state the writes before it left
+           ([write_lvals]): the index of [t[x]] in [x, t[x] = f()] is the
+           new [x]. *)
+        List.fold_left2 (fun state lv (out_ty, ret) ->
+            let state = check_safety state (InProg callsite) (safe_lval lv) in
+            let r_assgn =
+              get_ret_assgns state.abs
+                { f_decl with f_tyout = [ out_ty ]; f_ret = [ ret ] } [ lv ] in
+            { state with abs = aeval_f_return state.abs r_assgn })
+          state lvs (List.combine f_decl.f_tyout f_decl.f_ret) in
 
     debug(fun () ->
         Format.eprintf "forgetting %s local variables ...@.@." fname.fn_name);
@@ -1244,15 +1265,15 @@ end = struct
     (* SLH operations *)
     | Sopn.Oslh op ->
       begin match op with
-      | SLHinit -> [Some (pcast Arch.msf_size (Pconst (Z.of_int 0)))]
-      | SLHupdate ->
-        let b, msf = as_seq2 es in
-        let msf = Pif (Bty (U Arch.msf_size), b, msf, pcast Arch.msf_size (Pconst (Z.of_int (-1)))) in
-        [Some msf]
-      | SLHmove -> let msf = as_seq1 es in [Some msf]
+      (* A flag decides no access: [#protect] is the identity in the source
+         semantics, as below. Its value is unknown, which over-approximates
+         any, and the pre-analysis keeps it out of the relational domain. *)
+      | SLHinit | SLHupdate | SLHmove -> opn_dflt n
       | SLHprotect _ | SLHprotect_ptr _ ->
         let x, _msf = as_seq2 es in
         [Some x]
+      (* Introduced by SLH lowering and removed by stack allocation, so it
+         exists only between those passes, where the checker cannot run. *)
       | SLHprotect_ptr_fail _ -> assert false
       end
 
@@ -1510,20 +1531,29 @@ end = struct
     match sc with
     | Syscall_t.RandomBytes (ws, len) ->
        let n = Type.arr_size ws len in
-       let cells = match lvs with
-         | [ Lnone _ ] -> []
-         | [ Lvar x ] -> cells_of_array x 0 n
+       (* The source fills the written bytes with fresh random values
+          (syscall_sem.v), so the old values of the cells written must be
+          forgotten before they are marked initialised. At an unknown
+          offset every cell of the array is forgotten and none is marked:
+          some sub-array was filled, which byte range is unknown. *)
+       let forgotten, cells = match lvs with
+         | [ Lnone _ ] -> [], []
+         | [ Lvar x ] ->
+           let c = cells_of_array x 0 n in c, c
          | [ Lasub(aa, ws, _len, x, ofs) ] ->
             begin match AbsExpr.aeval_cst_int state.abs ofs with
-            | Some j -> cells_of_array x (access_offset aa ws j) n
+            | Some j -> let c = cells_of_array x (access_offset aa ws j) n in c, c
             | None ->
                debug (fun () ->
                    Format.eprintf "Warning: cannot compute the offset of the destination of #randombytes@.");
-               []
+               AbsExpr.arr_full_range (L.unloc x), []
             end
          | _ -> assert false
        in
-       let abs = List.fold_left AbsDom.is_init state.abs cells in
+       let abs =
+         AbsDom.forget_list state.abs
+           (List.map (fun c -> Mlocal c) forgotten) in
+       let abs = List.fold_left AbsDom.is_init abs cells in
        { state with abs }
 
   let log = timestamp ()
@@ -1574,10 +1604,21 @@ end = struct
           let c2 = List.map (fun i_desc -> { ginstr with i_desc }) c2 in
           aeval_if ginstr b c1 c2 state
         | _ ->
-          (* Remark: the assignments must be done in the correct order. *)
           let assgns = split_opn (List.length lvs) opn es in
-          let abs = AbsExpr.abs_assign_opn state.abs ginstr.i_info lvs assgns in
-          let abs = List.fold_left AbsDom.meet_btcons abs (post_opn opn lvs es) in
+          let state = match lvs with
+            | [ _ ] ->
+              { state with
+                abs = AbsExpr.abs_assign_opn state.abs ginstr.i_info lvs assgns }
+            | _ ->
+              let st = ref state in
+              let check abs lv =
+                st := check_safety { !st with abs } (InProg ginstr.i_loc)
+                    (safe_lval lv);
+                (!st).abs in
+              let abs =
+                AbsExpr.abs_assign_opn ~check state.abs ginstr.i_info lvs assgns in
+              { !st with abs } in
+          let abs = List.fold_left AbsDom.meet_btcons state.abs (post_opn opn lvs es) in
 
           { state with abs = abs; }
         end
@@ -2061,11 +2102,19 @@ end = struct
       let final_st = check_safety final_st (InReturn main_decl.f_name) conds in
 
       (* The memory ranges are the regions that the input pointers must
-         point to: no memory region satisfies an unbounded range. *)
+         point to: no memory region satisfies an unbounded range, nor a
+         range of more bytes than the address space has. A range of
+         exactly as many bytes is satisfied only by the whole address
+         space from address 0, which no caller provides; it is what a
+         pointer moved backwards gives, its offset taken modulo 2^n.
+         Such ranges arise when a pointer is moved by a value the
+         analysis does not bound, or moved down. *)
+      let space = Scalar.of_mpqf (mpq_pow (int_of_ws Arch.pointer_data)) in
       let final_st =
         List.filter_map (fun (MemLoc x as m) ->
             let itv = AbsDom.bound_variable final_st.abs (MmemRange m) in
             if Scalar.is_infty itv.inf = 0 && Scalar.is_infty itv.sup = 0
+               && Scalar.cmp itv.sup space < 0
             then None
             else Some (InReturn main_decl.f_name, BoundedRange x))
           final_st.env.m_locs

@@ -1,0 +1,10 @@
+/* A read 8 bytes before in: relative to in, its offset is 2^64 - 8, so the
+   range of in is 2^64 bytes, the whole address space. */
+export fn range_whole(reg u64 in) -> reg u64
+{
+  reg u64 r;
+
+  in += 0xfffffffffffffff8;
+  r = [in];
+  return r;
+}

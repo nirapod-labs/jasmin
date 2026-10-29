@@ -1,0 +1,18 @@
+/* The signed integer quotient and remainder round toward zero: at t = 0,
+   (t - 3) /s 2 + 1 and (t - 3) %s 2 + 1 are both 0, the written cell.
+   Rounding toward minus infinity would give -1 and 2, both out of
+   bounds. */
+export fn sdiv_index(reg u32 a) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 x;
+  inline int t;
+
+  m[0] = a;
+  x = 0;
+  for t = 0 to 1 {
+    x = m[(t - 3) /s 2 + 1];
+    x ^= m[(t - 3) %s 2 + 1];
+  }
+  return x;
+}

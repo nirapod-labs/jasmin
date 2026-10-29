@@ -1,0 +1,24 @@
+/* The loop runs for i = 0, 1, 2, and the last read a[2] is out of the
+   bounds of a. The index is protected with a flag updated from the loop
+   condition, which must not hide the bound. */
+export fn protect_loop_oob(reg u64 x) -> reg u64
+{
+  reg u64[2] a;
+  reg u64 i ms r t;
+  reg bool b;
+
+  ms = #init_msf();
+  a[0] = x;
+  a[1] = x;
+  r = 0;
+  i = 0;
+  while { b = i <= 2; } (b) {
+    ms = #update_msf(b, ms);
+    i = #protect(i, ms);
+    t = a[i];
+    r ^= t;
+    i += 1;
+  }
+  ms = #update_msf(!b, ms);
+  return r;
+}
