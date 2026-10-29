@@ -282,6 +282,8 @@ op LDRSH_64 (x: W16.t) : W64.t = W64.of_int (W16.to_sint x).
 
 op LDRSW (x: W32.t) : W64.t = W64.of_int (W32.to_sint x).
 
+op LDRW (x: W32.t) : W64.t = W64.of_int (W32.to_uint x).
+
 op STR_64 (x: W64.t) : W64.t = x.
 
 op STRB_64 (x: W8.t) : W8.t = x.
