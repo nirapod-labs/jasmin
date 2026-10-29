@@ -4,8 +4,9 @@
   and subtraction, shifts by a constant and the constant zero on `u128`
   are lowered to Advanced SIMD instructions, and the permutations and
   element moves (EXT, REV32, REV64, TRN1, TRN2, ZIP1, ZIP2, UZP1, UZP2,
-  DUP, INS, UMOV) are provided as intrinsics. An export function that
-  issues a system call now saves and restores `q8` to `q15`
+  DUP, INS, UMOV) and the bitwise selections (BSL, BIT) are provided as
+  intrinsics. An export function that issues a system call now saves and
+  restores `q8` to `q15`
   ([PR #1643](https://github.com/jasmin-lang/jasmin/pull/1643)).
 - armv8a: add the SHA-256, SHA-512 and SHA-3 instructions (SHA256H,
   SHA256H2, SHA256SU0, SHA256SU1, SHA512H, SHA512H2, SHA512SU0, SHA512SU1,

@@ -361,6 +361,13 @@ op VEOR (x y: W128.t) : W128.t = x +^ y.
 
 op VNOT (x: W128.t) : W128.t = invw x.
 
+(* BSL and BIT, as in their pseudocode: the destination is the first
+   argument. BSL takes the bits of n where d is set and of m elsewhere; BIT
+   takes the bits of n where m is set and keeps those of d elsewhere. *)
+op VBSL (d n m: W128.t) : W128.t = m +^ ((m +^ n) `&` d).
+
+op VBIT (d n m: W128.t) : W128.t = d +^ ((d +^ n) `&` m).
+
 op VADD_16u8 (x y: W128.t) : W128.t = VPADD_16u8 x y.
 op VADD_8u16 (x y: W128.t) : W128.t = VPADD_8u16 x y.
 op VADD_4u32 (x y: W128.t) : W128.t = VPADD_4u32 x y.

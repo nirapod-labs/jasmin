@@ -44,6 +44,8 @@ fn simd_ops(reg u64 p) {
     d = #VSSHR_8u16(d, 16);
     d = #VSRI_4u32(d, a, 32);
     d = #VSLI_2u64(d, b, 63);
+    d = #VBSL(d, a, b);
+    d = #VBIT(d, b, a);
     [:u128 p + 32] = d;
     d = #VMOVI(0);
     [:u128 p + 64] = d;

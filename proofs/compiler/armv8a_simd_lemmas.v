@@ -16,7 +16,9 @@
      SHA512SU1 compute two message-schedule words;
    - the [*_instr_*] lemmas: the same statements about the [id_semi] of the
      instruction descriptions, which fix the role of each operand;
-   - [xar_rolE]: XAR by 64 - r is a left rotation by r of the XOR.
+   - [xar_rolE]: XAR by 64 - r is a left rotation by r of the XOR;
+   - [VBSL_instr_select], [VBIT_instr_insert]: BSL and BIT select bits;
+     [VBIT_instr_ch], [VBSL_instr_maj]: BIT computes Ch and BSL Maj.
    These are statements about the semantics as transcribed; they do not
    validate the transcription against the architecture. *)
 
@@ -373,3 +375,60 @@ Proof.
   rewrite /xar /lift1_vec /lift1_vec'; congr make_vec.
   by apply: eq_map => x; exact: (wror_opp x r).
 Qed.
+
+(* -------------------------------------------------------------------- *)
+(* Bitwise selection. BSL takes each bit of its first source where the old
+   destination is set and of its second source elsewhere; BIT takes the
+   bit of its first source where its second source is set and keeps the
+   destination bit elsewhere. In FIPS 180-4 (4.1.2, 4.1.3), Ch(e, f, g)
+   takes each bit of f where e is set and of g elsewhere, and Maj(a, b, c)
+   takes the bit of a where b and c differ and that of b where they agree:
+     Ch(e, f, g)  = BIT(g, f, e)
+     Maj(a, b, c) = BSL(b XOR c, a, b)
+   Both functions are bitwise, so these statements about whole registers
+   hold in every element, at every element size; the elementwise form is
+   not stated separately. The formulas on the right of [VBIT_instr_ch] and
+   [VBSL_instr_maj] are those of [ch] and [maj] in sha256.v and of [Ch64]
+   and [Maj64] above. *)
+
+Section BITSEL.
+Context (opts : armv8a_options).
+
+Lemma VBSL_instr_select (d n m : u128) :
+  id_semi (armv8a_VBSL_instr opts) d n m = ok (wor (wand d n) (wand (wnot d) m)).
+Proof.
+  rewrite /id_semi /= /armv8a_VBSL_semi; congr ok.
+  apply/eqP/eq_from_wbit_n => i.
+  rewrite !(wxorE, wandE, worE) wN1E ltn_ord.
+  by case: (wbit_n d i); case: (wbit_n n i); case: (wbit_n m i).
+Qed.
+
+Lemma VBIT_instr_insert (d n m : u128) :
+  id_semi (armv8a_VBIT_instr opts) d n m = ok (wor (wand m n) (wand (wnot m) d)).
+Proof.
+  rewrite /id_semi /= /armv8a_VBIT_semi; congr ok.
+  apply/eqP/eq_from_wbit_n => i.
+  rewrite !(wxorE, wandE, worE) wN1E ltn_ord.
+  by case: (wbit_n d i); case: (wbit_n n i); case: (wbit_n m i).
+Qed.
+
+Lemma VBIT_instr_ch (e f g : u128) :
+  id_semi (armv8a_VBIT_instr opts) g f e = ok (wxor (wand e f) (wand (wnot e) g)).
+Proof.
+  rewrite /id_semi /= /armv8a_VBIT_semi; congr ok.
+  apply/eqP/eq_from_wbit_n => i.
+  rewrite !(wxorE, wandE) wN1E ltn_ord.
+  by case: (wbit_n e i); case: (wbit_n f i); case: (wbit_n g i).
+Qed.
+
+Lemma VBSL_instr_maj (a b c : u128) :
+  id_semi (armv8a_VBSL_instr opts) (wxor b c) a b
+  = ok (wxor (wand a b) (wxor (wand a c) (wand b c))).
+Proof.
+  rewrite /id_semi /= /armv8a_VBSL_semi; congr ok.
+  apply/eqP/eq_from_wbit_n => i.
+  rewrite !(wxorE, wandE).
+  by case: (wbit_n a i); case: (wbit_n b i); case: (wbit_n c i).
+Qed.
+
+End BITSEL.

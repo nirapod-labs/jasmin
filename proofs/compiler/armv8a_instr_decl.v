@@ -190,6 +190,8 @@ Variant armv8a_mnemonic : Type :=
 | VORR                           (* Bitwise OR (vector, register) *)
 | VEOR                           (* Bitwise exclusive-OR (vector) *)
 | VNOT                           (* Bitwise NOT (vector) *)
+| VBSL                           (* Bitwise select *)
+| VBIT                           (* Bitwise insert if true *)
 | VADD                           (* Add (vector) *)
 | VSUB                           (* Subtract (vector) *)
 | VSHL                           (* Shift left (immediate, vector) *)
@@ -250,7 +252,7 @@ Definition armv8a_mnemonics : seq armv8a_mnemonic :=
     ; STR; STRB; STRH; STP
     ; CSDB; DSB; ISB
     ; VMOV; VMOVI; VLDR; VSTR
-    ; VAND; VBIC; VORR; VEOR; VNOT
+    ; VAND; VBIC; VORR; VEOR; VNOT; VBSL; VBIT
     ; VADD; VSUB
     ; VSHL; VUSHR; VSSHR; VSRI; VSLI
     ; VEXT; VREV32; VREV64
@@ -434,6 +436,8 @@ Definition string_of_armv8a_mnemonic (mn : armv8a_mnemonic) : string :=
   | VORR => "VORR"
   | VEOR => "VEOR"
   | VNOT => "VNOT"
+  | VBSL => "VBSL"
+  | VBIT => "VBIT"
   | VADD => "VADD"
   | VSUB => "VSUB"
   | VSHL => "VSHL"
@@ -481,6 +485,8 @@ Definition vasm_name (mn : armv8a_mnemonic) : string :=
   | VORR => "ORR"
   | VEOR => "EOR"
   | VNOT => "NOT"
+  | VBSL => "BSL"
+  | VBIT => "BIT"
   | VADD => "ADD"
   | VSUB => "SUB"
   | VSHL => "SHL"
@@ -509,7 +515,7 @@ Definition vasm_name (mn : armv8a_mnemonic) : string :=
    their arrangement as on x86 ([VADD_4u32] is [ADD <Vd>.4S, ...]). *)
 Definition vector_esizes (mn : armv8a_mnemonic) : seq wsize :=
   match mn with
-  | VMOV | VAND | VBIC | VORR | VEOR | VNOT => [:: U8 ]
+  | VMOV | VAND | VBIC | VORR | VEOR | VNOT | VBSL | VBIT => [:: U8 ]
   | VMOVI => [:: U64 ]
   | VLDR | VSTR => [:: U128 ]
   | VADD | VSUB | VSHL | VUSHR | VSSHR | VSRI | VSLI => [:: U8; U16; U32; U64 ]
@@ -4074,6 +4080,35 @@ Definition armv8a_XAR_instr : instr_desc_t :=
   mk_v2_imm_instr XAR (CAimmC_armv8a_shift_amount U64) armv8a_XAR_semi.
 
 (* -------------------------------------------------------------------- *)
+(* Bitwise selection. BSL and BIT read the destination register and write
+   it, like the hash updates, and use the 16B arrangement. Each takes, bit
+   by bit, one of two registers under the control of a third: BSL selects
+   with the old destination, BIT inserts the bits of [Vn] where [Vm] is
+   set. The Operational information section of each one states that it
+   is a data-independent-time instruction, and ARM DDI 0487 M.d, C5.2.4
+   "DIT, Data Independent Timing", p. C5-958, lists both. *)
+
+(* [C7.2.25 BSL] ARM DDI 0487 M.d, p. C7-2983
+   Syntax: BSL <Vd>.16B, <Vn>.16B, <Vm>.16B
+   Semantics: Vm XOR ((Vm XOR Vn) AND Vd), the operation of the
+   pseudocode: each bit of Vn where Vd is set, of Vm elsewhere. *)
+Definition armv8a_VBSL_semi (wd wn wm : word U128) : ty_v :=
+  wxor wm (wand (wxor wm wn) wd).
+
+Definition armv8a_VBSL_instr : instr_desc_t :=
+  mk_v3d_instr VBSL [:: U8; U8; U8 ] armv8a_VBSL_semi.
+
+(* [C7.2.24 BIT] ARM DDI 0487 M.d, p. C7-2981
+   Syntax: BIT <Vd>.16B, <Vn>.16B, <Vm>.16B
+   Semantics: Vd XOR ((Vd XOR Vn) AND Vm), the operation of the
+   pseudocode: each bit of Vn where Vm is set, of Vd elsewhere. *)
+Definition armv8a_VBIT_semi (wd wn wm : word U128) : ty_v :=
+  wxor wd (wand (wxor wd wn) wm).
+
+Definition armv8a_VBIT_instr : instr_desc_t :=
+  mk_v3d_instr VBIT [:: U8; U8; U8 ] armv8a_VBIT_semi.
+
+(* -------------------------------------------------------------------- *)
 (* Description of instructions. *)
 
 Definition mn_desc (mn : armv8a_mnemonic) : instr_desc_t :=
@@ -4164,6 +4199,8 @@ Definition mn_desc (mn : armv8a_mnemonic) : instr_desc_t :=
   | VORR => armv8a_VORR_instr
   | VEOR => armv8a_VEOR_instr
   | VNOT => armv8a_VNOT_instr
+  | VBSL => armv8a_VBSL_instr
+  | VBIT => armv8a_VBIT_instr
   | VADD => armv8a_VADD_instr
   | VSUB => armv8a_VSUB_instr
   | VSHL => armv8a_VSHL_instr
