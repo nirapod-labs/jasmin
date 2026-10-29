@@ -1,0 +1,11 @@
+// The value read from t is masked before it is used as an index.
+export fn masked() -> reg u64 {
+  stack u64[16] t;
+  inline int k;
+  reg u64 v r;
+  for k = 0 to 16 { t[k] = k; }
+  v = t[3];
+  v &= 15;
+  r = t[v];
+  return r;
+}

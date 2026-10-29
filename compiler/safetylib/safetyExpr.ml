@@ -32,6 +32,7 @@ module Mtexpr : sig
   val binop : binop -> t -> t -> t
 
   val get_var : t -> mvar list
+  val top_untracked : t -> t
   val contains_mod : t -> bool
 
   val weak_cp : mvar -> int -> mvar
@@ -176,6 +177,17 @@ end = struct
     aux [] e
     |> u8_blast_vars ~blast_arrays:true
     |> List.sort_uniq Stdlib.compare
+
+  let rec top_untracked e = match e with
+    | Mvar mvar when untracked_cell mvar ->
+      let n = match ty_mvar mvar with
+        | Bty (U ws) -> int_of_ws ws
+        | _ -> assert false in
+      Mcst (Coeff.Interval (Interval.of_mpqf (Mpqf.of_int 0) (mpq_pow_minus n 1)))
+    | Mcst _ | Mvar _ -> e
+    | Munop (op, a, t, r) -> Munop (op, top_untracked a, t, r)
+    | Mbinop (op, a, b, t, r) ->
+      Mbinop (op, top_untracked a, top_untracked b, t, r)
 
   let rec contains_mod = function
     | Mvar _ | Mcst _ -> false

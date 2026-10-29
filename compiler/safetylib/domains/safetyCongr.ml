@@ -161,8 +161,11 @@ module AbsNumCongr : AbsNumType = struct
   (* Missing entries are [Top]. *)
   type t = Congr.t Mm.t
 
+  (* Untracked array cells ([untracked_cell]) are never entries, hence
+     [Top]. *)
   let make vs =
-    List.fold_left (fun t v -> Mm.add v Congr.top t) Mm.empty vs
+    List.fold_left (fun t v ->
+        if untracked_cell v then t else Mm.add v Congr.top t) Mm.empty vs
 
   let value v t = Mm.find_default Congr.top v t
       
@@ -266,8 +269,8 @@ module AbsNumCongr : AbsNumType = struct
 
   let assign_expr ?force:(force=false) t ves =
     let ves = List.filter (fun (v,_) -> match v with
-        | Mlocal (AarraySlice _) -> false (* FIXME: add an option *)          
-        | _ -> true
+        | Mlocal (AarraySlice _) -> false (* FIXME: add an option *)
+        | v -> not (untracked_cell v)
       ) ves in
     List.fold_left (assign_expr_one force) t ves
     
@@ -295,7 +298,7 @@ module AbsNumCongr : AbsNumType = struct
     List.iter (fun x -> Hashtbl.replace h x ()) l;
     let t = Mm.filter (fun k _ -> Hashtbl.mem h k) t in
     List.fold_left (fun t v ->
-        if not (Mm.mem v t)
+        if not (Mm.mem v t) && not (untracked_cell v)
         then Mm.add v Congr.top t
         else t
       ) t l

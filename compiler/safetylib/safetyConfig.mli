@@ -18,6 +18,8 @@ type init_print = IP_None  | IP_NoArray | IP_All
 val sc_input_ranges            : unit -> input_range list
 val sc_comp_pass               : unit -> Compiler.compiler_step
 val sc_k_unroll                : unit -> int
+val sc_array_track_max_bytes   : unit -> int
+val sc_congruence_reduction    : unit -> int
 val sc_zero_threshold          : unit -> bool
 val sc_param_threshold         : unit -> bool
 val sc_more_threshold          : unit -> bool
@@ -26,6 +28,8 @@ val sc_if_disj                 : unit -> bool
 val sc_pif_movecc_as_if        : unit -> bool
 val sc_while_flags_setfrom_dep : unit -> bool
 val sc_dynamic_packing         : unit -> bool
+val sc_relational_loop_vars    : unit -> bool
+val sc_relational_loop_vars_in : unit -> string list
 val sc_call_policy             : unit -> call_policy
   
 (* Printing parameters *)

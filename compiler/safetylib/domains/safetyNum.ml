@@ -207,20 +207,20 @@ end = struct
             pp_typ (typ, false) pp_coef_var_list (neg_list neg)
             Coeff.print (Coeff.neg cst)
 
+  (* The constraints are printed in sorted order. The order of the array
+     APRON returns depends on the sequence of operations that built the
+     abstract value, not only on the value. *)
   let pp_lincons_earray fmt ea =
-    let rec read n =
-      if n < 0 then []
-      else
-        let x = Lincons1.array_get ea n in
-        x :: (read (n-1))
-    in
-    let l = read (Lincons1.array_length ea -1) in
+    let l =
+      List.init (Lincons1.array_length ea) (Lincons1.array_get ea)
+      |> List.map (Format.asprintf "%a" pp_lincons)
+      |> List.sort String.compare in
     match l with
     | [] -> Format.fprintf fmt "⊤"
-    | _ -> 
+    | _ ->
       Format.fprintf fmt "{%a}"
         (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
-                                   pp_lincons) l
+           Format.pp_print_string) l
 
 
   let pp fmt x =
@@ -274,18 +274,33 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
 
   let () = SafetyVar.reset ()
 
+  (* [Abstract1.change_environment] copies the whole abstract value, even
+     when the environment does not change. Abstract values are never
+     modified in place here, so the value is returned as it is then. *)
+  let change_env man a env =
+    if Environment.equal (Abstract1.env a) env then a
+    else Abstract1.change_environment man a env false
+
   let is_relational () = Ppl.manager_is_ppl man
     
+  (* The cells of large arrays ([untracked_cell]) are never dimensions of
+     the domain: they are left out of the environments, assignments to them
+     are dropped, and expressions read them as their range
+     ([Mtexpr.top_untracked]). *)
+  let tracked v = not (untracked_cell v)
+
   let make l =
     let vars = u8_blast_vars ~blast_arrays:true l |>
+               List.filter tracked |>
                List.map avar_of_mvar in
     let env = env_of_list vars in
     Abstract1.top man env
 
   let lce a a' =
-    let lce = Environment.lce (Abstract1.env a) (Abstract1.env a') in
-    (Abstract1.change_environment man a lce false,
-     Abstract1.change_environment man a' lce false)
+    if Environment.equal (Abstract1.env a) (Abstract1.env a') then (a, a')
+    else
+      let lce = Environment.lce (Abstract1.env a) (Abstract1.env a') in
+      (change_env man a lce, change_env man a' lce)
 
   let env_lce l =
     if l = [] then raise (Aint_error "Lce of an empty list");
@@ -294,7 +309,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
   let lce_list l =
     if l = [] then raise (Aint_error "Lce of an empty list");
     let lce = List.map Abstract1.env l |> env_lce in
-    List.map (fun a -> Abstract1.change_environment man a lce false) l
+    List.map (fun a -> change_env man a lce) l
 
   let meet a a' =
     let a,a' = lce a a' in
@@ -338,6 +353,11 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
    *   Abstract1.meet_lincons_array man res to_add *)
 
   let compute_thresholds env oc =
+    (* A constraint on an untracked cell gives no threshold (thresholds only
+       affect the precision of the widening). *)
+    let oc = match oc with
+      | Some c when not (List.for_all tracked (Mtexpr.get_var (Mtcons.get_expr c))) -> None
+      | _ -> oc in
     let vars = Option.map_default (fun c ->
         Mtexpr.get_var (Mtcons.get_expr c)
       ) [] oc in
@@ -439,7 +459,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
     let nvars = List.filter (fun x -> not (List.mem x vs)) vars in
     let new_env = env_of_list nvars in
 
-    Abstract1.change_environment man a new_env false
+    change_env man a new_env
 
   
   let expand a v v_list = expand_man man a v v_list
@@ -462,18 +482,22 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
 
   let prepare_env env mexpr =
     let vars_mexpr =
-      List.map avar_of_mvar (Mtexpr.get_var mexpr) |> Array.of_list
-    and empty_var_array = Array.make 0 (Var.of_string "") in
-    let env_mexpr = Environment.make vars_mexpr empty_var_array in
-    Environment.lce env env_mexpr
+      List.map avar_of_mvar (Mtexpr.get_var mexpr) |> Array.of_list in
+    (* Most expressions only read variables of the environment already. *)
+    if Array.for_all (Environment.mem_var env) vars_mexpr then env
+    else
+      let empty_var_array = Array.make 0 (Var.of_string "") in
+      let env_mexpr = Environment.make vars_mexpr empty_var_array in
+      Environment.lce env env_mexpr
 
   let bound_texpr_man man a (e : Mtexpr.t) =
+    let e = Mtexpr.top_untracked e in
     (* We use a different variable for each occurrence of weak variables *)
     let map,e = Mtexpr.weak_transf Mm.empty e in
     let a = add_weak_cp_man man a map in
 
     let env = prepare_env (Abstract1.env a) e in
-    let a = Abstract1.change_environment man a env false in
+    let a = change_env man a env in
     let e' = Mtexpr.to_aexpr e env in
 
     Abstract1.bound_texpr man a e'
@@ -496,6 +520,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
       | _ -> [v] in
     let avs =
       List.concat_map blast vs
+      |> List.filter tracked
       |> List.rev_map avar_of_mvar
       |> List.filter (fun av -> not (Environment.mem_var env av))
       |> List.sort_uniq Var.compare in
@@ -509,7 +534,8 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
       |> List.rev_map avar_of_mvar
       |> List.sort_uniq Var.compare
       |> Array.of_list in
-    Environment.lce env (Environment.make vars (Array.make 0 (Var.of_string "")))
+    if Array.for_all (Environment.mem_var env) vars then env
+    else Environment.lce env (Environment.make vars (Array.make 0 (Var.of_string "")))
 
   let e_complex e =
     (is_relational ()) && (Mtexpr.contains_mod e)
@@ -518,6 +544,12 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
 
   (* Relational assignment. *)
   let assign_expr_aux force a vs es =
+    let vs, es =
+      List.combine vs es
+      |> List.filter (fun (v, _) -> tracked v)
+      |> List.map (fun (v, e) -> (v, Mtexpr.top_untracked e))
+      |> List.split in
+    if vs = [] then a else
     (* We use a different variable for each occurrence of weak variables *)
     let map,es = List.fold_left (fun (map,acc) e ->
         let map,e = Mtexpr.weak_transf map e in
@@ -543,7 +575,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
 
     (* We add the variables in the expressions to the environment *)
     let env = prepare_env_list env es in
-    let a = Abstract1.change_environment man a env false in
+    let a = change_env man a env in
 
     (* If the domain is relational, and if e contains a modulo, then we just
        return the interval of variations of e (i.e. we forget all relations
@@ -693,7 +725,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
     if cs = [] then bottom_man man a
     else
       let map,cs = List.fold_left (fun (map, acc) c ->
-          let e = Mtcons.get_expr c in
+          let e = Mtexpr.top_untracked (Mtcons.get_expr c) in
 
           (* We use a different variable for each occurrence of weak variables *)
           let map,mexpr = Mtexpr.weak_transf map e in
@@ -712,7 +744,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
       let c_array = Tcons1.array_make env (List.length cs) in
       List.iteri (fun i c -> Tcons1.array_set c_array i c) cs;
 
-      let a = Abstract1.change_environment man a env false in
+      let a = change_env man a env in
       let a = Abstract1.meet_tcons_array man a c_array in
 
       (* We fold back the added variables *)
@@ -734,7 +766,7 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
   let sat_constr_man man a cnstr =
     if trivially_false man a cnstr then false
     else
-      let e = Mtcons.get_expr cnstr in
+      let e = Mtexpr.top_untracked (Mtcons.get_expr cnstr) in
       
       (* We use a different variable for each occurrence of weak variables *)
       let map,mexpr = Mtexpr.weak_transf Mm.empty e in
@@ -753,11 +785,12 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
 
   let change_environment a mvars =
     let env_vars = u8_blast_vars ~blast_arrays:true mvars
+                   |> List.filter tracked
                    |> List.map avar_of_mvar
                    |> Array.of_list
     and empty_var_array = Array.make 0 (Var.of_string "") in
     let new_env = Environment.make env_vars empty_var_array in
-    Abstract1.change_environment man a new_env false
+    change_env man a new_env
 
   let remove_vars a mvars =
     let vars = Environment.vars (Abstract1.env a)
@@ -766,10 +799,13 @@ module AbsNumI (Manager : AprManager) (PW : ProgWrap) : AbsNumType = struct
     and rem_vars = u8_blast_vars ~blast_arrays:true mvars
                    |> List.map avar_of_mvar  in
 
-    let nvars = List.filter (fun x -> not (List.mem x rem_vars)) vars in
+    let removed = Hashtbl.create 97 in
+    List.iter (fun x -> Hashtbl.replace removed (Var.to_string x) ()) rem_vars;
+    let nvars =
+      List.filter (fun x -> not (Hashtbl.mem removed (Var.to_string x))) vars in
     let new_env = env_of_list nvars in
-    
-    Abstract1.change_environment man a new_env false
+
+    change_env man a new_env
 
   let get_env a = Abstract1.env a
 
