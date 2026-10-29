@@ -1,0 +1,9 @@
+export
+fn chain(reg u64 p x) -> reg u64 {
+  reg u64 msf y;
+  msf = #init_msf();
+  x = #protect(x, msf);
+  y = #protect(x, msf);
+  y = [p + y];
+  return y;
+}

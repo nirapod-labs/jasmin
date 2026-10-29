@@ -1,0 +1,13 @@
+export
+fn run3(reg u64 p x y z) -> reg u64 {
+  reg u64 msf t;
+  msf = #init_msf();
+  x = #protect(x, msf);
+  y = #protect(y, msf);
+  z = #protect(z, msf);
+  t = [p + y];
+  x += t;
+  t = [p + z];
+  x += t;
+  return x;
+}

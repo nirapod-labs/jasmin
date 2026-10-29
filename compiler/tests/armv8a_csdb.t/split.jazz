@@ -1,0 +1,11 @@
+export
+fn split(reg u64 p x y) -> reg u64 {
+  reg u64 msf t;
+  msf = #init_msf();
+  x = #protect(x, msf);
+  y += 8;
+  y = #protect(y, msf);
+  t = [p + y];
+  x += t;
+  return x;
+}
