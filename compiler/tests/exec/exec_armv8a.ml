@@ -27,3 +27,9 @@ let () =
 let () =
   let prog = load_file "../success/armv8a/simd_exec.jazz" in
   List.iter (fun f -> exec prog [] f []) [ "sha3_ops"; "sha3_xar" ]
+
+(* BSL and BIT on the same inputs; the expected values were produced by
+   the instructions on hardware. *)
+let () =
+  let prog = load_file "../success/armv8a/simd_exec.jazz" in
+  exec prog [] "bitsel_ops" []
