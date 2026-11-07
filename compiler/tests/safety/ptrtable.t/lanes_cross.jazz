@@ -1,0 +1,19 @@
+/* The read is lane 1, reached from lane 0 by the difference of the two
+   entries, which the analysis cannot bound. */
+export fn lanes_cross(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  reg u64 p d i b r;
+
+  p = in[0];
+  d = in[1];
+  d -= p;
+  p += d;
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}

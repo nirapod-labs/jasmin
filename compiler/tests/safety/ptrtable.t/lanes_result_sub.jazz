@@ -1,0 +1,22 @@
+/* Cell 0 receives, as a sub-array, the result of a call. */
+fn fresh(reg ptr u64[1] t, reg u64 k) -> reg ptr u64[1]
+{
+  t[0] = k;
+  return t;
+}
+
+export fn lanes_result_sub(reg mut ptr u64[2] in, reg u64 q len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+
+  in[0 : 1] = fresh(in[0 : 1], q);
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

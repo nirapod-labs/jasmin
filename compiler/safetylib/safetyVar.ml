@@ -8,8 +8,11 @@ type v_scope = Expr.v_scope
                  
 open SafetyUtils
     
-(* Memory locations *)
-type mem_loc = MemLoc of var
+(* Memory locations: the region an export argument [x] points to
+   ([MemLoc x]), and the region that the pointer held, at entry, in cell [k]
+   of an export array argument [x] of pointer-width cells points to
+   ([MemCell (x, k)]). *)
+type mem_loc = MemLoc of var | MemCell of var * int
 
 (* (v,ws,i) is the slice [8*i; 8*i + ws[ of v. 
      Note that the slice offset is not scaled on the word-size. *)
@@ -57,8 +60,25 @@ let weak_update v =
   | WTemp _ -> true
 
 (*---------------------------------------------------------------*)
+(* An export array argument gets one region per pointer-width cell
+   ([MemCell]), at most [max_table_cells] of them. An array that is not of
+   this shape gets no cell region, which only means that a pointer read
+   from it points to anything: losing regions is always sound. *)
+let max_table_cells = 64
+
+let is_table_arg pd x = match x.v_ty with
+  | Arr (ws, n) -> ws = pd && 0 <= n && n <= max_table_cells
+  | Bty _ -> false
+
+(* The name of a region is a dimension name of the numerical domains. Export
+   arguments are never renamed ([MkUniq] processes the export first and
+   keeps the first variable of each name, see [SafetyInterpreter.AbsMake]),
+   and a Jasmin identifier has no '.', so [x] and [x.k] and [x'.k'] are
+   pairwise distinct. [export_mem_locs] checks the uniqueness of the list it
+   builds. *)
 let string_of_mloc = function
   | MemLoc s -> s.v_name
+  | MemCell (s, k) -> s.v_name ^ "." ^ string_of_int k
 
 let string_of_atype = function
   | Avar s -> "v_" ^ s.v_name
@@ -265,8 +285,17 @@ module Sm = Set.Make(Mmv)
 module Mmlv = struct
   type t = mem_loc
 
-  let compare (MemLoc v) (MemLoc v') = Prog.V.compare v v'
-  let equal   (MemLoc v) (MemLoc v') = Prog.V.equal v v'
+  (* A total order on regions, so that [Mml] and [Sml] are ordered
+     maps and sets whatever the mixture of cells and arguments. *)
+  let compare m m' = match m, m' with
+    | MemLoc v, MemLoc v' -> Prog.V.compare v v'
+    | MemLoc _, MemCell _ -> -1
+    | MemCell _, MemLoc _ -> 1
+    | MemCell (v, k), MemCell (v', k') ->
+      let c = Prog.V.compare v v' in
+      if c <> 0 then c else Stdlib.compare k k'
+
+  let equal m m' = compare m m' = 0
 end
 
 module Mml = Map.Make(Mmlv)

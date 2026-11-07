@@ -1,0 +1,20 @@
+/* After the swap, c holds the old contents of in: the read is lane 0. */
+export fn lanes_swap_ok(reg mut ptr u64[1] in, reg u64 q len) -> reg u64, reg ptr u64[1]
+{
+  stack u64[1] cs;
+  reg ptr u64[1] c;
+  reg u64 p i b r;
+
+  c = cs;
+  c[0] = q;
+  c, in = #swap(c, in);
+  p = c[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

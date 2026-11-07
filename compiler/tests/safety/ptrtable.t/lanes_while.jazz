@@ -1,0 +1,22 @@
+/* The vector kernels' shape: both lane pointers are reloaded at the top
+   of every iteration and moved by the offset of the block. */
+export fn lanes_while(reg const ptr u64[2] in, reg u64 n) -> reg u64
+{
+  reg u64 p0 p1 off b r;
+
+  r = 0;
+  off = 0;
+  while (n != 0) {
+    p0 = in[0];
+    p1 = in[1];
+    p0 += off;
+    p1 += off;
+    b = [:u64 p0 + 56];
+    r ^= b;
+    b = [:u64 p1 + 56];
+    r ^= b;
+    off += 64;
+    n -= 1;
+  }
+  return r;
+}

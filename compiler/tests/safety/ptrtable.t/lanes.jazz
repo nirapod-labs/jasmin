@@ -1,0 +1,18 @@
+/* Two lanes of len bytes, each read through the pointer in its cell. */
+export fn lanes(reg const ptr u64[2] in, reg u64 len) -> reg u64
+{
+  inline int k;
+  reg u64 p i b r;
+
+  r = 0;
+  for k = 0 to 2 {
+    p = in[k];
+    i = 0;
+    while (i < len) {
+      b = (64u)[:u8 p + i];
+      r ^= b;
+      i += 1;
+    }
+  }
+  return r;
+}

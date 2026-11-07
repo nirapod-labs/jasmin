@@ -1,0 +1,16 @@
+/* Cell 0 is overwritten before the read. */
+export fn lanes_written(reg mut ptr u64[2] in, reg u64 q len) -> reg u64, reg ptr u64[2]
+{
+  reg u64 p i b r;
+
+  in[0] = q;
+  p = in[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r, in;
+}

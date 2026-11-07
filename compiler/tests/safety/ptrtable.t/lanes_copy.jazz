@@ -1,0 +1,20 @@
+/* A copy of the table is written, then read. */
+export fn lanes_copy(reg const ptr u64[2] in, reg u64 q len) -> reg u64
+{
+  reg u64 p i b r;
+  stack u64[2] cs;
+  reg ptr u64[2] c;
+
+  c = cs;
+  c = #copy(in);
+  c[0] = q;
+  p = c[0];
+  r = 0;
+  i = 0;
+  while (i < len) {
+    b = (64u)[:u8 p + i];
+    r ^= b;
+    i += 1;
+  }
+  return r;
+}
