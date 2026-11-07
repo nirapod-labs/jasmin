@@ -1,0 +1,17 @@
+/* The copy starts at 4: bytes [0, 4) are never written. */
+export fn start4(reg u64 in) -> reg u64
+{
+  stack u8[64] buf;
+  reg u64 dst t r n;
+
+  n = 16;
+  dst = 4;
+  while (n >= 8) { t = [:u64 in + dst]; buf.[:u64 dst] = t; dst += 8; n -= 8; }
+  while (n > 0) { t = (64u)[:u8 in + dst]; buf[dst] = (8u)t; dst += 1; n -= 1; }
+  t = 0;
+  while (dst < 64) { buf[dst] = (8u)t; dst += 1; }
+  r = 0;
+  t = buf[:u64 0];
+  r ^= t;
+  return r;
+}

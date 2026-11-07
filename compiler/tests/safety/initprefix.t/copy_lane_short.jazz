@@ -1,0 +1,13 @@
+/* Only 32 bytes of lane 0 are written, then the whole lane is copied over
+   lane 1: the read of byte 64 is a read of a byte the copy never wrote. */
+export fn copy_lane_short(reg u64 v) -> reg u64
+{
+  stack u8[128] buf;
+  reg u64 i r;
+
+  i = 0;
+  while (i < 32) { buf[i] = (8u)v; i += 1; }
+  buf[64 : 64] = buf[0 : 64];
+  r = (64u)buf[64];
+  return r;
+}

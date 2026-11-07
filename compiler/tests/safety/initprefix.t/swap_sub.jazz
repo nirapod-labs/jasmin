@@ -1,0 +1,15 @@
+/* t is filled by a loop, then t[0 : 1] receives the never-written old a,
+   so the prefix of t must be cut and the read of t[0] must alarm. */
+export fn swap_sub(reg u64 v) -> reg u64
+{
+  stack u64[1] a b;
+  stack u64[2] t;
+  reg u64 i r;
+
+  i = 0;
+  while (i < 2) { t[i] = v; i += 1; }
+  b[0] = v;
+  a, t[0 : 1] = #swap(a, b);
+  r = t[0];
+  return r;
+}

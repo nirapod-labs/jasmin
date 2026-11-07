@@ -1,0 +1,17 @@
+/* A descending fill is safe but the prefix abstraction cannot see it; the
+   alarm is a documented precision limit, not a soundness control. */
+export fn down(reg u64 in) -> reg u64
+{
+  stack u8[64] buf;
+  reg u64 dst t r n;
+
+  n = 16;
+  dst = 64;
+  while (n > 0) { dst -= 1; t = (64u)[:u8 in]; buf[dst] = (8u)t; n -= 1; }
+  t = 0;
+  while (dst > 0) { dst -= 1; buf[dst] = (8u)t; }
+  r = 0;
+  t = buf[:u64 0];
+  r ^= t;
+  return r;
+}

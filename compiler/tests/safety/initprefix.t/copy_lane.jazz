@@ -1,0 +1,13 @@
+/* A full lane copied over the next one keeps both prefixes; the read of
+   the second lane passes. */
+export fn copy_lane(reg u64 v) -> reg u64
+{
+  stack u8[128] buf;
+  reg u64 i r;
+
+  i = 0;
+  while (i < 64) { buf[i] = (8u)v; i += 1; }
+  buf[64 : 64] = buf[0 : 64];
+  r = (64u)buf[64];
+  return r;
+}
