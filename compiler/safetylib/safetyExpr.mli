@@ -22,6 +22,10 @@ sig
   val binop : binop -> t -> t                 -> t
     
   val get_var : t -> SafetyVar.mvar list
+
+  (* Replace each untracked array cell ([SafetyVar.untracked_cell]) of
+     [ws] bits by its range, [0; 2^ws - 1]. *)
+  val top_untracked : t -> t
       
   val contains_mod : t -> bool   
     

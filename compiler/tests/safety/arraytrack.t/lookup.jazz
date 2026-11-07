@@ -1,0 +1,11 @@
+// The cells of t hold 0..15, so the value read from t[3] is a valid index
+// into t when the checker knows the values of the cells.
+export fn lookup() -> reg u64 {
+  stack u64[16] t;
+  inline int k;
+  reg u64 v r;
+  for k = 0 to 16 { t[k] = k; }
+  v = t[3];
+  r = t[v];
+  return r;
+}

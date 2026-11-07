@@ -50,6 +50,10 @@ module type RProdParam = sig
   module B : AbsDisjType
   val print : ?full:bool -> Format.formatter -> (A.t * B.t) -> unit
   val reduce : (A.t * B.t) -> (A.t * B.t)
+
+  (* [reduce_vars vs t] is [reduce t] restricted to what [B] knows about the
+     variables [vs]. *)
+  val reduce_vars : mvar list -> (A.t * B.t) -> (A.t * B.t)
 end
 
 (* Asymmetric reduced product.   

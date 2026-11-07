@@ -1,0 +1,10 @@
+// The last cell of t is never written.
+export fn uninit(reg u64 i) -> reg u64 {
+  stack u64[16] t;
+  inline int k;
+  reg u64 r;
+  for k = 0 to 15 { t[k] = k; }
+  i &= 15;
+  r = t[i];
+  return r;
+}
