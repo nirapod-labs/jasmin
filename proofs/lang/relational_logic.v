@@ -1010,13 +1010,13 @@ Proof.
 Qed.
 
 Lemma wequiv_if_left P Q ii e c1 c2 c :
-  (forall b, wequiv (fun s1 s2 => P s1 s2 /\ sem_cond (p_globs p1) e s1 = ok b)
+  (forall b, wequiv (fun s1 s2 => P s1 s2 /\ sem_cond1 (p_globs p1) e s1 = ok b)
                (if b then c1 else c2) c Q) ->
   wequiv P [:: MkI ii (Cif e c1 c2)] c Q.
 Proof.
   move=> h s1 s2 hP /=.
   rewrite /isem_cond.
-  case heq: (sem_cond (p_globs p1) e s1) => [b | err] /=.
+  case heq: (sem_cond1 (p_globs p1) e s1) => [b | err] /=.
   + by rewrite bind_ret_r bind_ret_l; apply: (h b).
   rewrite bind_bind bind_vis.
   apply xrutt_CutL => //.
