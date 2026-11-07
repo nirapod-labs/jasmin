@@ -1,0 +1,18 @@
+/* A 32-bit load zero-extended to 64 bits is a single LDR to a W register. */
+export fn ldrw(reg u64 p i) -> reg u64 {
+  reg u64 x y;
+  x = (64u)[:u32 p];
+  i &= 7;
+  y = (64u)[:u32 p + 4 * i];
+  x += y;
+  return x;
+}
+
+/* The same load from a global goes through its address, like other loads. */
+u32[4] H = { 1, 2, 3, 4 };
+
+export fn ldrw_global() -> reg u64 {
+  reg u64 x;
+  x = (64u) H[2];
+  return x;
+}
