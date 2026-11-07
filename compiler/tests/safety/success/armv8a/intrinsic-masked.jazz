@@ -1,0 +1,13 @@
+/* The result of an architecture-specific operator is unknown to the
+   analysis; masking it bounds the index. */
+export
+fn masked(reg u64 x) -> reg u64 {
+  stack u64[4] t;
+  reg u64 i r;
+  inline int j;
+  for j = 0 to 4 { t[j] = j; }
+  i = #UBFX(x, 3, 8);
+  i &= 3;
+  r = t[i];
+  return r;
+}
