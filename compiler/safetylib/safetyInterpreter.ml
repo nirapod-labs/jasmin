@@ -1428,8 +1428,9 @@ end = struct
 
 
   (* The function must not use memory loads/stores, array accesses must be
-     fixed, and arrays in arguments must be fully initialized
-     (i.e. cells must be initialized). *)
+     fixed, arrays in arguments must be fully initialized
+     (i.e. cells must be initialized), and arguments must not point to
+     memory (the points-to information is lost when evaluating from top). *)
   let check_valid_call_top st f_decl =
     let cells_init =
       List.for_all (fun v -> match mvar_of_scoped_var Expr.Slocal v with
@@ -1444,7 +1445,14 @@ end = struct
           | _ -> true
         ) f_decl.f_args in
 
-    cells_init && check_memory_access f_decl
+    let no_pointer =
+      List.for_all (fun v ->
+          match AbsDom.var_points_to st.abs (mvar_of_scoped_var Expr.Slocal v) with
+          | Ptrs (_ :: _) -> false
+          | Ptrs [] | TopPtr -> true
+        ) f_decl.f_args in
+
+    cells_init && no_pointer && check_memory_access f_decl
 
 
   (* -------------------------------------------------------------------- *)
@@ -1855,6 +1863,8 @@ end = struct
                 let abs =
                   AbsDom.assign_sexpr
                     state.abs (Some ginstr.i_info) [mvari, expr_ci] in
+                (* As a constant, i points to no memory region. *)
+                let abs = AbsDom.assign_ptr_expr abs mvari (PtVars []) in
 
                 let state =
                   { state with
@@ -1884,8 +1894,9 @@ end = struct
 
     (* Precond: [check_valid_call_top st_in] must hold:
        the function must not use memory loads/stores, array accesses must be
-       fixed, and arrays in arguments must be fully initialized
-       (i.e. cells must be initialized). *)
+       fixed, arrays in arguments must be fully initialized
+       (i.e. cells must be initialized), and arguments must not point to
+       memory. *)
     | Config.Call_TopByCallSite ->
       (* f has been abstractly evaluated at this callsite before *)
       if ItMap.mem itk st_in.it then
@@ -1927,9 +1938,11 @@ end = struct
         let st_out_ndisj = { st_out_ndisj with
                              it = ItMap.add itk fabs st_out_ndisj.it } in
 
-        (* It remains to add the disjunctions of the call_site to st_out *)
+        (* It remains to add the disjunctions of the call_site to st_out.
+           The disjunctions created in the callee are joined first, as in
+           [fabs]. *)
         { st_out_ndisj with
-          abs = AbsDom.to_shape st_out_ndisj.abs st_in.abs }
+          abs = AbsDom.to_shape (AbsDom.remove_disj st_out_ndisj.abs) st_in.abs }
 
   and aeval_if ginstr e c1 c2 state =
     let eval_cond state = function
