@@ -1,0 +1,6 @@
+export
+fn main(reg ptr u64[4] a, reg u64 i) -> reg u64 {
+  reg u64 x;
+  x = a[i];
+  return x;
+}

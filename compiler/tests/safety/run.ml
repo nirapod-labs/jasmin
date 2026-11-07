@@ -3,8 +3,8 @@
     The runner automatically detects the target architecture from the directory structure.
 
     Directory structure:
-    - success/{x86-64,arm-m4,risc-v,common}/ : Tests that should pass safety checking
-    - fail/{x86-64,arm-m4,risc-v,common}/    : Tests that should fail safety checking
+    - success/{x86-64,arm-m4,armv8a,risc-v,common}/ : Tests that should pass safety checking
+    - fail/{x86-64,arm-m4,armv8a,risc-v,common}/    : Tests that should fail safety checking
 *)
 
 open Jasmin
@@ -58,11 +58,6 @@ let load_and_analyze ~fmt ~safety_param expect path arch =
           assert false
         end)
     fds
-
-let load_and_analyze ~fmt ~safety_param expect path =
-  function
-  | ARMv8A -> () (* TODO: enable when the safety checker is implemented for ARMv8-A *)
-  | arch -> load_and_analyze ~fmt ~safety_param expect path arch
 
 let doit ~fmt expect archs path () =
   let safety_param = config path in

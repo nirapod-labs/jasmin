@@ -1,0 +1,10 @@
+export
+fn ldp() -> reg u64 {
+  stack u64[4] s;
+  reg u64 a b;
+  inline int j;
+  for j = 0 to 4 { s[j] = j; }
+  a, b = #LDP(s.[:u128 16]);
+  a += b;
+  return a;
+}
