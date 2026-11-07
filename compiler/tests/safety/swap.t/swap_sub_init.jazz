@@ -1,0 +1,15 @@
+/* #swap(a, b) returns (b, a): the sub-array t[0 : 1] receives the old a,
+   which was never written, so t[0] is not initialized. */
+export fn swap_sub_init(reg u64 v) -> reg u64
+{
+  stack u64[1] a b;
+  stack u64[2] t;
+  reg u64 r;
+
+  t[0] = v;
+  t[1] = v;
+  b[0] = v;
+  a, t[0 : 1] = #swap(a, b);
+  r = t[0];
+  return r;
+}

@@ -1,0 +1,13 @@
+/* (sint) w is -1 for w = 2^32 - 1, so the index is -2^32, out of bounds.
+   Read as the unsigned value of w, it would be 0. */
+export fn sint_index(reg u32 a) -> reg u32
+{
+  reg u32[2] m;
+  reg u32 w x;
+
+  m[0] = a;
+  m[1] = a;
+  w = -1;
+  x = m[(sint) w - 4294967295];
+  return x;
+}

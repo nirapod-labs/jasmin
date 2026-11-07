@@ -1,0 +1,15 @@
+/* F1, as in the review: t[0] is 0 before #randombytes and any byte after
+   it, so i is 0 to 255 and u[i] is out of bounds unless i < 2. */
+export fn rb_stale() -> reg u64
+{
+  stack u8[1] t;
+  stack u64[2] u;
+  reg u64 i r;
+  t[0] = 0;
+  u[0] = 0;
+  u[1] = 0;
+  t = #randombytes(t);
+  i = (64u)t[0];
+  r = u[i];
+  return r;
+}

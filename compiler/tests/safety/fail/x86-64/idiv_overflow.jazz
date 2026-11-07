@@ -1,0 +1,12 @@
+/* IDIV of 2^63 by 1: the quotient 2^63 does not fit in a signed 64-bit
+   word, and the instruction faults. */
+export fn idiv_overflow() -> reg u64
+{
+  reg u64 hi lo d q;
+
+  hi = 0;
+  lo = 0x8000000000000000;
+  d = 1;
+  ?{ RAX = q } = #IDIV(hi, lo, d);
+  return q;
+}

@@ -35,7 +35,7 @@ A callee with a pointer argument is analyzed in its calling context.
   *** No Safety Violation
     mem_p: [0; 16]
 
-  $ ../../../jasmin-checksafety --config calltop.json pointer_offset.jazz 2>&1 | grep -e Violation -e line -e safe
+  $ ../../../jasmin-checksafety --config calltop.json pointer_offset.jazz 2>&1 | grep -e Violation -e line -e safe -e bounded
   *** Possible Safety Violation(s):
-    "pointer_offset.jazz", line 11 (2-14): is_valid p +64u (64u) 0 u64
+    g return: bounded memory range of p
   Program is not safe!

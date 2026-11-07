@@ -1,0 +1,22 @@
+/* The loop runs while the byte read is not zero, so no numerical
+   dimension moves after its first iteration. Iteration 1 reads at a + 8,
+   iteration 2 reads at a + 8 and replaces p by a popcount, at most 8,
+   which has no region, and iteration 3 reads at that small address. */
+export fn lost(reg u64 a) -> reg u64
+{
+  reg u64 p j r t;
+
+  p = a;
+  p += 8;
+  j = 0;
+  r = 1;
+  while (r != 0) {
+    t = (64u)[:u8 p];
+    r = t;
+    if (j == 1) {
+      ?{}, p = #POPCNT(r);
+    }
+    j = 1;
+  }
+  return r;
+}

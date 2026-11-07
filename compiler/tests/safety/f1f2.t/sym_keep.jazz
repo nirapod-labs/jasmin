@@ -1,0 +1,17 @@
+/* Control for the F2 fix: the cell b reads is not written, another array
+   is. The branch is dead in the source and must stay dead for the
+   checker, so this stays safe. */
+export fn sym_keep() -> reg u64
+{
+  stack u64[1] t;
+  stack u64[2] u;
+  reg u64 i r;
+  reg bool b;
+  t[0] = 0;
+  u[0] = 0;
+  b = t[0] == 0;
+  u[1] = 1;
+  r = 0;
+  if (!b) { i = 5; r = u[i]; }
+  return r;
+}

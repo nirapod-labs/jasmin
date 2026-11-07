@@ -1,0 +1,12 @@
+/* The offset is an expression the numerical domain does not model: the
+   offset of in is unknown, and the analysis goes on. */
+export fn moved_xor(reg u64 in a b) -> reg u64
+{
+  reg u64 p r;
+
+  p = in + (a ^ b);
+  r = [p];
+  in += a ^ b;
+  r ^= [in];
+  return r;
+}

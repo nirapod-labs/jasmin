@@ -74,13 +74,19 @@ module PointsToImpl : PointsTo = struct
     let l_rem = u8_blast_vars ~blast_arrays:true l_rem in 
     { pts = Mm.filter (fun v _ -> not (List.mem v l_rem)) t.pts }
 
+  (* [t] is included in [t'] when every variable points, in [t], into a
+     subset of what it points to in [t']. A variable absent from a map
+     points to anything (TopPtr), so every binding of [t'] must have a
+     binding in [t] with fewer regions, and a variable absent from [t']
+     accepts anything. The loop fixpoint test asks this inclusion: testing
+     it over the bindings of [t] instead would let a loop stop while a
+     pointer of the last iteration has lost its region. *)
   let is_included : t -> t -> bool = fun t t' ->
-    Mm.for_all (fun v l ->
-        if not (Mm.mem v t'.pts) then true
-        else
-          let l' = Mm.find v t'.pts in
-          List.for_all (fun x -> List.mem x l') l
-      ) t.pts
+    Mm.for_all (fun v l' ->
+        match Mm.find_opt v t.pts with
+        | None -> false
+        | Some l -> List.for_all (fun x -> List.mem x l') l
+      ) t'.pts
 
   (* let top_mem_loc : t -> mem_loc list = fun t -> t.top *)
 

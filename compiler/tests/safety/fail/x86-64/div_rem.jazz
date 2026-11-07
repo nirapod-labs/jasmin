@@ -1,0 +1,17 @@
+/* DIV of 9 by 5: the quotient is 1 and the remainder 4, out of the bounds
+   of m. */
+export fn div_rem(reg u64 a) -> reg u64
+{
+  reg u64[2] m;
+  reg u64 hi lo d q r x;
+
+  m[0] = a;
+  m[1] = a;
+  hi = 0;
+  lo = 9;
+  d = 5;
+  ?{ RAX = q, RDX = r } = #DIV(hi, lo, d);
+  x = m[r];
+  x ^= q;
+  return x;
+}

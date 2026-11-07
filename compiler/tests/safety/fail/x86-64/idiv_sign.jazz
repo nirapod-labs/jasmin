@@ -1,0 +1,16 @@
+/* IDIV of -2^63 by a divisor that is 1 or -1. The divisor is never 0, but
+   its sign is unknown, and by -1 the quotient 2^63 does not fit in a signed
+   64-bit word. */
+export fn idiv_sign(reg u64 a) -> reg u64
+{
+  reg u64 hi lo d q;
+
+  d = 1;
+  if (a != 0) {
+    d = -1;
+  }
+  hi = -1;
+  lo = 0x8000000000000000;
+  ?{ RAX = q } = #IDIV(hi, lo, d);
+  return q;
+}

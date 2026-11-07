@@ -1,0 +1,15 @@
+/* Bytes [0, 4) are written. The copy moves [0, 8) to [4, 12), so byte 8
+   receives the old byte 4, never written. */
+export fn copy_overlap(reg u64 v) -> reg u64
+{
+  stack u8[16] x;
+  reg u64 r;
+
+  x[0] = (8u)v;
+  x[1] = (8u)v;
+  x[2] = (8u)v;
+  x[3] = (8u)v;
+  x[4 : 8] = x[0 : 8];
+  r = (64u)x[8];
+  return r;
+}

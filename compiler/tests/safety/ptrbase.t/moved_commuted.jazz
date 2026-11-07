@@ -1,0 +1,11 @@
+/* The base of the addition is the length: q is inlen moved by in, so the
+   read is relative to the region of inlen, at the unknown offset in. */
+export fn moved_commuted(reg u64 in inlen) -> reg u64
+{
+  reg u64 q r;
+
+  q = inlen;
+  q += in;
+  r = [q];
+  return r;
+}

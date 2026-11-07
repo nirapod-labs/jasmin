@@ -267,12 +267,16 @@ module AbsNumCongr : AbsNumType = struct
       else c in
     Mm.add v c t
 
+  (* A target this domain does not bind is dropped from the batch and left
+     out of the map, which is [Top] for a missing entry, so no earlier
+     congruence of it survives a write. *)
   let assign_expr ?force:(force=false) t ves =
-    let ves = List.filter (fun (v,_) -> match v with
-        | Mlocal (AarraySlice _) -> false (* FIXME: add an option *)
-        | v -> not (untracked_cell v)
-      ) ves in
-    List.fold_left (assign_expr_one force) t ves
+    let is_dropped (v,_) = match v with
+      | Mlocal (AarraySlice _) -> true (* FIXME: add an option *)
+      | v -> untracked_cell v in
+    let ves, dropped = List.partition (fun x -> not (is_dropped x)) ves in
+    let t = List.fold_left (assign_expr_one force) t ves in
+    List.fold_left (fun t (v, _) -> Mm.remove v t) t dropped
     
   let sat_constr t cnstr = match Mtcons.get_typ cnstr with
     | Lincons1.EQMOD n ->

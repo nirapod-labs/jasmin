@@ -1,0 +1,14 @@
+/* After the swap y is 5, and t[5] is out of bounds. */
+export fn swap_oob() -> reg u64
+{
+  stack u64[2] t;
+  reg u64 x y r;
+
+  t[0] = 0;
+  t[1] = 0;
+  x = 5;
+  y = 0;
+  x, y = #swap(x, y);
+  r = t[y];
+  return r;
+}

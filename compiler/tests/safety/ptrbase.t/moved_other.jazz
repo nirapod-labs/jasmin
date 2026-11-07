@@ -1,0 +1,10 @@
+/* The base pointer is moved by an unconstrained value: the offset of the
+   read is unknown. */
+export fn moved_other(reg u64 in x) -> reg u64
+{
+  reg u64 r;
+
+  in += x;
+  r = [in];
+  return r;
+}
