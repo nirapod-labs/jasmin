@@ -109,6 +109,7 @@ type model =
   | ConstantTime
   | ConstantTimeGlobal
   | Normal
+  | SafetyAnnotations
 
 type callee_saved_strategy =
   | CSS_Tight (* run register allocation to compute the precise count of needed callee-saved registers *)
